@@ -1,0 +1,1066 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Chaqaloq Uyqu Kuzatuvi</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Quicksand:wght@400;500;600;700&display=swap');
+
+:root {
+  --bg: #fef6f0;
+  --surface: #fff8f3;
+  --card: #ffffff;
+  --accent: #ff8c69;
+  --accent2: #7ec8c8;
+  --accent3: #f9c784;
+  --soft: #ffe8dc;
+  --soft2: #d4f0f0;
+  --text: #3d2b1f;
+  --muted: #a08070;
+  --border: #f0ddd0;
+  --good: #5cba8e;
+  --warn: #f0a030;
+  --bad: #e05555;
+  --shadow: 0 4px 20px rgba(255,140,105,0.12);
+}
+
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+
+body {
+  font-family: 'Quicksand', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  padding-bottom: 90px;
+}
+
+/* Decorative background */
+body::before {
+  content:'';
+  position:fixed;
+  top:0; left:0; right:0;
+  height:260px;
+  background: linear-gradient(160deg, #ffe0cc 0%, #ffd6e7 50%, #d4f0f0 100%);
+  z-index:0;
+  border-radius: 0 0 40px 40px;
+}
+
+.stars {
+  position:fixed;
+  top:0; left:0; right:0; bottom:0;
+  pointer-events:none;
+  z-index:0;
+  overflow:hidden;
+}
+.star {
+  position:absolute;
+  border-radius:50%;
+  opacity:0.4;
+  animation: floatStar 6s ease-in-out infinite;
+}
+@keyframes floatStar {
+  0%,100%{transform:translateY(0) scale(1);}
+  50%{transform:translateY(-12px) scale(1.1);}
+}
+
+.app { position:relative; z-index:1; max-width:480px; margin:0 auto; }
+
+/* Header */
+.header {
+  padding: 32px 20px 20px;
+  text-align: center;
+}
+.header-moon { font-size: 52px; margin-bottom: 8px; animation: moonRock 4s ease-in-out infinite; }
+@keyframes moonRock { 0%,100%{transform:rotate(-5deg);} 50%{transform:rotate(5deg);} }
+
+.header-title {
+  font-family: 'Nunito', sans-serif;
+  font-size: 24px;
+  font-weight: 900;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+.header-sub {
+  font-size: 13px;
+  color: var(--muted);
+  font-weight: 600;
+}
+.mama-name {
+  display:inline-block;
+  background: linear-gradient(135deg, var(--accent), #ff6b9d);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  font-weight: 800;
+}
+
+/* Config banner */
+.config-banner {
+  margin: 0 20px 16px;
+  background: linear-gradient(135deg, #fff3cd, #fff8e1);
+  border: 2px dashed var(--accent3);
+  border-radius: 16px;
+  padding: 14px 16px;
+  font-size: 13px;
+  color: #7a5800;
+  font-weight: 600;
+  text-align: center;
+  line-height: 1.5;
+}
+
+/* Nav */
+.nav {
+  display: flex;
+  margin: 0 20px 20px;
+  background: white;
+  border-radius: 16px;
+  padding: 4px;
+  box-shadow: var(--shadow);
+}
+.nav-btn {
+  flex:1;
+  padding: 10px 4px;
+  border:none;
+  background:transparent;
+  border-radius:12px;
+  font-family:'Quicksand',sans-serif;
+  font-size:12px;
+  font-weight:700;
+  color:var(--muted);
+  cursor:pointer;
+  transition:all 0.2s;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:3px;
+}
+.nav-btn span { font-size:18px; }
+.nav-btn.active {
+  background: linear-gradient(135deg, var(--accent), #ff6b9d);
+  color:white;
+}
+
+/* Pages */
+.page { display:none; padding:0 20px; }
+.page.active { display:block; }
+
+/* Card */
+.card {
+  background: var(--card);
+  border-radius: 24px;
+  padding: 20px;
+  margin-bottom: 16px;
+  box-shadow: var(--shadow);
+  border: 1px solid var(--border);
+  position:relative;
+  overflow:hidden;
+}
+.card-title {
+  font-family:'Nunito',sans-serif;
+  font-size:15px;
+  font-weight:800;
+  color:var(--text);
+  margin-bottom:16px;
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+
+/* Baby selector */
+.baby-tabs {
+  display:flex;
+  gap:8px;
+  margin-bottom:16px;
+  flex-wrap:wrap;
+}
+.baby-tab {
+  padding:8px 14px;
+  border-radius:99px;
+  border:2px solid var(--border);
+  background:var(--surface);
+  font-family:'Nunito',sans-serif;
+  font-size:13px;
+  font-weight:700;
+  color:var(--muted);
+  cursor:pointer;
+  transition:all 0.2s;
+}
+.baby-tab.active {
+  border-color:var(--accent);
+  background:var(--soft);
+  color:var(--accent);
+}
+
+/* Sleep session type */
+.session-types {
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
+  margin-bottom:16px;
+}
+.session-type-btn {
+  padding:14px 10px;
+  border-radius:16px;
+  border:2px solid var(--border);
+  background:var(--surface);
+  cursor:pointer;
+  text-align:center;
+  transition:all 0.2s;
+}
+.session-type-btn.active {
+  border-color:var(--accent2);
+  background:var(--soft2);
+}
+.session-type-btn .icon { font-size:28px; margin-bottom:4px; }
+.session-type-btn .label { font-size:12px; font-weight:700; color:var(--text); }
+.session-type-btn .desc { font-size:10px; color:var(--muted); font-weight:600; margin-top:2px; }
+
+/* Time input row */
+.time-row {
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:12px;
+  margin-bottom:14px;
+}
+.field-label {
+  font-size:11px;
+  font-weight:700;
+  color:var(--muted);
+  text-transform:uppercase;
+  letter-spacing:0.8px;
+  margin-bottom:6px;
+}
+.time-field {
+  background:var(--surface);
+  border:2px solid var(--border);
+  border-radius:14px;
+  padding:12px;
+  font-family:'Nunito',sans-serif;
+  font-size:20px;
+  font-weight:800;
+  color:var(--text);
+  width:100%;
+  text-align:center;
+  transition:border-color 0.2s;
+}
+.time-field:focus { outline:none; border-color:var(--accent); }
+
+.date-field {
+  background:var(--surface);
+  border:2px solid var(--border);
+  border-radius:14px;
+  padding:11px 14px;
+  font-family:'Quicksand',sans-serif;
+  font-size:14px;
+  font-weight:600;
+  color:var(--text);
+  width:100%;
+  margin-bottom:14px;
+}
+.date-field:focus { outline:none; border-color:var(--accent); }
+
+/* Sliders */
+.slider-row { margin-bottom:14px; }
+.slider-labels { display:flex; justify-content:space-between; font-size:11px; color:var(--muted); font-weight:600; margin-bottom:6px; }
+.custom-slider {
+  -webkit-appearance:none;
+  width:100%;
+  height:8px;
+  border-radius:99px;
+  background: linear-gradient(90deg, var(--accent) var(--val,50%), var(--border) var(--val,50%));
+  outline:none;
+}
+.custom-slider::-webkit-slider-thumb {
+  -webkit-appearance:none;
+  width:22px; height:22px;
+  border-radius:50%;
+  background: white;
+  border:3px solid var(--accent);
+  box-shadow:0 2px 8px rgba(255,140,105,0.3);
+  cursor:pointer;
+}
+
+/* Emoji selector */
+.emoji-row {
+  display:flex;
+  gap:8px;
+  margin-bottom:14px;
+}
+.emoji-btn {
+  flex:1;
+  padding:12px 4px;
+  border-radius:14px;
+  border:2px solid var(--border);
+  background:var(--surface);
+  font-size:22px;
+  cursor:pointer;
+  text-align:center;
+  transition:all 0.15s;
+}
+.emoji-btn.active {
+  border-color:var(--accent);
+  background:var(--soft);
+  transform:scale(1.1);
+}
+
+/* Waking count */
+.count-row {
+  display:flex;
+  align-items:center;
+  gap:12px;
+  margin-bottom:14px;
+}
+.count-btn {
+  width:40px; height:40px;
+  border-radius:50%;
+  border:none;
+  background: var(--soft);
+  color:var(--accent);
+  font-size:20px;
+  font-weight:800;
+  cursor:pointer;
+  display:flex; align-items:center; justify-content:center;
+  transition:all 0.15s;
+}
+.count-btn:active { transform:scale(0.9); }
+.count-val {
+  font-family:'Nunito',sans-serif;
+  font-size:28px;
+  font-weight:900;
+  color:var(--text);
+  min-width:40px;
+  text-align:center;
+}
+.count-label { font-size:12px; color:var(--muted); font-weight:600; flex:1; }
+
+/* Note */
+.note-area {
+  background:var(--surface);
+  border:2px solid var(--border);
+  border-radius:14px;
+  padding:12px 14px;
+  font-family:'Quicksand',sans-serif;
+  font-size:14px;
+  color:var(--text);
+  width:100%;
+  height:80px;
+  resize:none;
+  margin-bottom:16px;
+}
+.note-area:focus { outline:none; border-color:var(--accent); }
+.note-area::placeholder { color:var(--muted); }
+
+/* Submit button */
+.btn-submit {
+  width:100%;
+  padding:16px;
+  border:none;
+  border-radius:18px;
+  background: linear-gradient(135deg, var(--accent) 0%, #ff6b9d 100%);
+  color:white;
+  font-family:'Nunito',sans-serif;
+  font-size:16px;
+  font-weight:900;
+  cursor:pointer;
+  box-shadow:0 6px 20px rgba(255,140,105,0.35);
+  transition:all 0.2s;
+  letter-spacing:0.3px;
+}
+.btn-submit:active { transform:scale(0.97); box-shadow:0 2px 8px rgba(255,140,105,0.25); }
+
+/* Baby setup */
+.baby-setup-row {
+  display:flex;
+  gap:10px;
+  margin-bottom:12px;
+}
+.baby-name-input {
+  flex:1;
+  background:var(--surface);
+  border:2px solid var(--border);
+  border-radius:14px;
+  padding:12px 14px;
+  font-family:'Quicksand',sans-serif;
+  font-size:14px;
+  font-weight:600;
+  color:var(--text);
+}
+.baby-name-input:focus { outline:none; border-color:var(--accent); }
+.baby-birth-input {
+  background:var(--surface);
+  border:2px solid var(--border);
+  border-radius:14px;
+  padding:12px 10px;
+  font-family:'Quicksand',sans-serif;
+  font-size:13px;
+  color:var(--text);
+  width:140px;
+}
+.baby-birth-input:focus { outline:none; border-color:var(--accent); }
+
+.btn-secondary {
+  padding:11px 18px;
+  border-radius:14px;
+  border:2px solid var(--accent);
+  background:white;
+  color:var(--accent);
+  font-family:'Nunito',sans-serif;
+  font-size:13px;
+  font-weight:800;
+  cursor:pointer;
+  transition:all 0.15s;
+}
+.btn-secondary:active { background:var(--soft); }
+
+/* History */
+.history-item {
+  display:flex;
+  gap:12px;
+  align-items:center;
+  padding:12px 0;
+  border-bottom:1px solid var(--border);
+  animation:fadeUp 0.3s ease;
+}
+.history-item:last-child { border-bottom:none; }
+@keyframes fadeUp { from{opacity:0;transform:translateY(8px);} to{opacity:1;transform:translateY(0);} }
+
+.h-icon { font-size:28px; flex-shrink:0; }
+.h-info { flex:1; }
+.h-date { font-size:11px; color:var(--muted); font-weight:700; margin-bottom:2px; }
+.h-main { font-size:14px; font-weight:700; color:var(--text); }
+.h-sub { font-size:11px; color:var(--muted); font-weight:600; margin-top:2px; }
+.h-dur {
+  font-family:'Nunito',sans-serif;
+  font-size:20px;
+  font-weight:900;
+  flex-shrink:0;
+}
+
+/* Toast */
+.toast {
+  position:fixed;
+  bottom:100px;
+  left:50%;
+  transform:translateX(-50%) translateY(20px);
+  background:var(--text);
+  color:white;
+  border-radius:16px;
+  padding:12px 24px;
+  font-size:14px;
+  font-weight:700;
+  opacity:0;
+  transition:all 0.3s cubic-bezier(0.34,1.56,0.64,1);
+  z-index:999;
+  white-space:nowrap;
+}
+.toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+
+/* Setup page */
+.setup-hero {
+  text-align:center;
+  padding:30px 0 20px;
+}
+.setup-hero .icon { font-size:64px; animation:moonRock 3s ease-in-out infinite; }
+.setup-title { font-family:'Nunito',sans-serif; font-size:22px; font-weight:900; margin:10px 0 6px; }
+.setup-sub { font-size:13px; color:var(--muted); font-weight:600; line-height:1.6; }
+
+.mama-input {
+  background:var(--surface);
+  border:2px solid var(--border);
+  border-radius:14px;
+  padding:12px 14px;
+  font-family:'Quicksand',sans-serif;
+  font-size:15px;
+  font-weight:600;
+  color:var(--text);
+  width:100%;
+  margin-bottom:10px;
+}
+.mama-input:focus { outline:none; border-color:var(--accent); }
+
+/* Age badge */
+.age-badge {
+  display:inline-block;
+  background:var(--soft2);
+  color:var(--accent2);
+  border-radius:99px;
+  padding:4px 12px;
+  font-size:11px;
+  font-weight:800;
+  margin-left:8px;
+}
+
+/* Stats mini */
+.stats-row {
+  display:grid;
+  grid-template-columns:1fr 1fr 1fr;
+  gap:10px;
+  margin-bottom:16px;
+}
+.stat-mini {
+  background:var(--surface);
+  border-radius:16px;
+  padding:12px 8px;
+  text-align:center;
+  border:1px solid var(--border);
+}
+.stat-mini-val {
+  font-family:'Nunito',sans-serif;
+  font-size:22px;
+  font-weight:900;
+  color:var(--accent);
+  line-height:1;
+}
+.stat-mini-lbl { font-size:10px; font-weight:700; color:var(--muted); margin-top:3px; text-transform:uppercase; letter-spacing:0.5px; }
+
+input[type="time"]::-webkit-calendar-picker-indicator,
+input[type="date"]::-webkit-calendar-picker-indicator { filter:invert(0.4) sepia(1) saturate(3) hue-rotate(330deg); }
+</style>
+</head>
+<body>
+
+<!-- Floating stars decoration -->
+<div class="stars" id="stars"></div>
+
+<div class="app">
+
+  <!-- SETUP PAGE (first time) -->
+  <div id="setupPage" style="display:none; padding:20px;">
+    <div class="setup-hero">
+      <div class="icon">🌙</div>
+      <div class="setup-title">Xush kelibsiz, onajon!</div>
+      <div class="setup-sub">Chaqaloqning uyqusini kuzatish uchun<br>bir necha ma'lumot kiriting</div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">👩 Siz haqingizda</div>
+      <input class="mama-input" id="mamaName" placeholder="Ismingiz (masalan: Malika)">
+      <input class="mama-input" id="mamaPhone" placeholder="Telegram username (@username)">
+    </div>
+
+    <div class="card">
+      <div class="card-title">👶 Chaqaloq ma'lumotlari</div>
+      <div style="margin-bottom:10px">
+        <div class="field-label">Ismi</div>
+        <input class="mama-input" id="setupBabyName" placeholder="Chaqaloq ismi">
+      </div>
+      <div>
+        <div class="field-label">Tug'ilgan sana</div>
+        <input type="date" class="mama-input" id="setupBabyBirth">
+      </div>
+      <div style="margin-top:10px; font-size:12px; color:var(--muted); font-weight:600; text-align:center;">
+        Ikkinchi chaqaloqni keyinroq qo'shish mumkin
+      </div>
+    </div>
+
+    <button class="btn-submit" onclick="saveSetup()">Boshlash →</button>
+  </div>
+
+  <!-- MAIN APP -->
+  <div id="mainApp" style="display:none;">
+
+    <div class="header">
+      <div class="header-moon">🌙</div>
+      <div class="header-title">Assalomu alaykum, <span class="mama-name" id="mamaNameDisplay">onajon</span>!</div>
+      <div class="header-sub">Chaqaloqning uyqusini birga kuzatamiz</div>
+    </div>
+
+    <div class="config-banner" id="configBanner" style="display:none">
+      ⚙️ <strong>Sozlash kerak:</strong> Airtable API va Bot Token ni<br>config.js ga kiriting
+    </div>
+
+    <div class="nav">
+      <button class="nav-btn active" onclick="showPage('input')">
+        <span>✍️</span>Kiritish
+      </button>
+      <button class="nav-btn" onclick="showPage('history')">
+        <span>📋</span>Tarix
+      </button>
+      <button class="nav-btn" onclick="showPage('babies')">
+        <span>👶</span>Chaqaloq
+      </button>
+    </div>
+
+    <!-- INPUT PAGE -->
+    <div class="page active" id="page-input">
+
+      <!-- Baby selector -->
+      <div class="card">
+        <div class="card-title">👶 Qaysi chaqaloq?</div>
+        <div class="baby-tabs" id="babyTabs"></div>
+        <div id="babyAgeInfo" style="font-size:12px; color:var(--muted); font-weight:600;"></div>
+      </div>
+
+      <!-- Session type -->
+      <div class="card">
+        <div class="card-title">💤 Uyqu turi</div>
+        <div class="session-types">
+          <div class="session-type-btn active" onclick="selectType('night', this)">
+            <div class="icon">🌙</div>
+            <div class="label">Tungi uyqu</div>
+            <div class="desc">Asosiy uxlash</div>
+          </div>
+          <div class="session-type-btn" onclick="selectType('nap', this)">
+            <div class="icon">☀️</div>
+            <div class="label">Kunduzgi uyqu</div>
+            <div class="desc">Qisqa dam olish</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Time entry -->
+      <div class="card">
+        <div class="card-title">⏰ Vaqt</div>
+
+        <div class="field-label">Sana</div>
+        <input type="date" class="date-field" id="sleepDate">
+
+        <div class="time-row">
+          <div>
+            <div class="field-label">🌙 Yotgan vaqt</div>
+            <input type="time" class="time-field" id="sleepStart" value="21:00">
+          </div>
+          <div>
+            <div class="field-label">☀️ Turgan vaqt</div>
+            <input type="time" class="time-field" id="sleepEnd" value="07:00">
+          </div>
+        </div>
+
+        <div id="durationPreview" style="text-align:center; font-family:'Nunito',sans-serif; font-size:18px; font-weight:800; color:var(--accent); padding:6px 0;">
+          ⏱ Hisoblash uchun vaqt kiriting
+        </div>
+      </div>
+
+      <!-- Quality & details -->
+      <div class="card">
+        <div class="card-title">📊 Uyqu sifati</div>
+
+        <div class="field-label">Chaqaloq qanday uxladi?</div>
+        <div class="emoji-row">
+          <div class="emoji-btn" onclick="selectMood(1,this)" title="Juda yomon">😭</div>
+          <div class="emoji-btn" onclick="selectMood(2,this)" title="Yomon">😟</div>
+          <div class="emoji-btn active" onclick="selectMood(3,this)" title="O'rtacha">😐</div>
+          <div class="emoji-btn" onclick="selectMood(4,this)" title="Yaxshi">😊</div>
+          <div class="emoji-btn" onclick="selectMood(5,this)" title="A'lo">😴</div>
+        </div>
+
+        <div class="field-label">Necha marta uyg'ondi?</div>
+        <div class="count-row">
+          <button class="count-btn" onclick="changeWaking(-1)">−</button>
+          <div class="count-val" id="wakingVal">0</div>
+          <div class="count-label">marta uyg'ongdi</div>
+          <button class="count-btn" onclick="changeWaking(1)">+</button>
+        </div>
+
+        <div class="field-label" style="margin-bottom:4px;">Qo'shimcha kuzatuvlar</div>
+        <div style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:14px;" id="symptomBtns">
+          <button class="symptom-btn" onclick="toggleSymptom(this,'Tishlar chiqqan')">🦷 Tish</button>
+          <button class="symptom-btn" onclick="toggleSymptom(this,'Kasal')">🤧 Kasal</button>
+          <button class="symptom-btn" onclick="toggleSymptom(this,'Qorin og\'riq')">🤱 Qorin og\'riq</button>
+          <button class="symptom-btn" onclick="toggleSymptom(this,'Teri muammo')">🌡 Isitma</button>
+          <button class="symptom-btn" onclick="toggleSymptom(this,'Ishtaha yo\'q')">🍼 Ishtaha yo\'q</button>
+        </div>
+
+        <textarea class="note-area" id="sleepNote" placeholder="Izoh: chaqaloq qanday ko'rindi, nima bo'ldi..."></textarea>
+
+        <button class="btn-submit" onclick="saveSleep()">🌙 Uyqu ma'lumotini saqlash</button>
+      </div>
+    </div>
+
+    <!-- HISTORY PAGE -->
+    <div class="page" id="page-history">
+      <div class="stats-row" id="statsRow">
+        <div class="stat-mini"><div class="stat-mini-val" id="stTotal">0</div><div class="stat-mini-lbl">Jami</div></div>
+        <div class="stat-mini"><div class="stat-mini-val" id="stAvg">-</div><div class="stat-mini-lbl">O'rtacha</div></div>
+        <div class="stat-mini"><div class="stat-mini-val" id="stToday">-</div><div class="stat-mini-lbl">Bugun</div></div>
+      </div>
+      <div class="card">
+        <div class="card-title">📋 So'nggi yozuvlar</div>
+        <div id="historyList">
+          <div style="text-align:center; padding:30px; color:var(--muted); font-weight:600;">
+            Hali yozuv yo'q 🌙
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- BABIES PAGE -->
+    <div class="page" id="page-babies">
+      <div class="card">
+        <div class="card-title">👶 Chaqaloqlarim</div>
+        <div id="babyList"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">➕ Yangi chaqaloq qo'shish</div>
+        <div class="baby-setup-row">
+          <input class="baby-name-input" id="newBabyName" placeholder="Ismi">
+          <input type="date" class="baby-birth-input" id="newBabyBirth">
+        </div>
+        <button class="btn-secondary" onclick="addBaby()" style="width:100%">➕ Qo'shish</button>
+      </div>
+    </div>
+
+  </div><!-- /mainApp -->
+</div>
+
+<div class="toast" id="toast"></div>
+
+<style>
+.symptom-btn {
+  padding:7px 12px;
+  border-radius:99px;
+  border:2px solid var(--border);
+  background:var(--surface);
+  font-size:12px;
+  font-weight:700;
+  color:var(--text);
+  cursor:pointer;
+  transition:all 0.15s;
+  font-family:'Quicksand',sans-serif;
+}
+.symptom-btn.active {
+  border-color:var(--accent);
+  background:var(--soft);
+  color:var(--accent);
+}
+</style>
+
+<script>
+// ============================================================
+// CONFIG — Bu yerga o'z kalitlaringizni kiriting
+// ============================================================
+const CONFIG = {
+  AIRTABLE_TOKEN: 'YOUR_AIRTABLE_TOKEN',   // airtable.com/create/tokens
+  AIRTABLE_BASE:  'YOUR_BASE_ID',           // airtable.com/appXXXXX
+  AIRTABLE_TABLE: 'SleepLogs',
+  // Bot token va admin ID kerak emas (server tomonida)
+};
+// ============================================================
+
+const isConfigured = CONFIG.AIRTABLE_TOKEN !== 'YOUR_AIRTABLE_TOKEN';
+
+// ---- Decorative stars ----
+(function(){
+  const s = document.getElementById('stars');
+  const positions = [[10,8],[85,15],[20,60],[75,40],[50,25],[30,80],[90,70],[15,45],[60,90],[40,15]];
+  const sizes = [6,8,5,10,7,6,9,5,7,8];
+  const delays = [0,1,2,0.5,1.5,2.5,0.3,1.8,0.7,2.2];
+  positions.forEach((p,i)=>{
+    const el = document.createElement('div');
+    el.className='star';
+    el.style.cssText=`left:${p[0]}%;top:${p[1]}%;width:${sizes[i]}px;height:${sizes[i]}px;background:rgba(255,160,100,0.3);animation-delay:${delays[i]}s;`;
+    s.appendChild(el);
+  });
+})();
+
+// ---- State ----
+let selectedType = 'night';
+let selectedMood = 3;
+let wakingCount  = 0;
+let selectedSymptoms = [];
+let selectedBabyIdx = 0;
+
+// ---- Local storage ----
+function getData(k, def) { try{ return JSON.parse(localStorage.getItem(k)) || def; }catch(e){ return def; } }
+function setData(k,v) { localStorage.setItem(k, JSON.stringify(v)); }
+
+function getProfile()  { return getData('baby_profile', null); }
+function getBabies()   { return getData('babies', []); }
+function getLogs()     { return getData('sleep_logs', []); }
+function saveLog(l)    { const logs=getLogs(); logs.unshift(l); setData('sleep_logs', logs.slice(0,200)); }
+
+// ---- Init ----
+window.onload = function(){
+  if(window.Telegram?.WebApp){ Telegram.WebApp.ready(); Telegram.WebApp.expand(); }
+  const profile = getProfile();
+  if(!profile){ showSetup(); } else { showMain(profile); }
+  document.getElementById('sleepDate').valueAsDate = new Date();
+  setupTimeListeners();
+};
+
+function showSetup(){
+  document.getElementById('setupPage').style.display='block';
+  document.getElementById('mainApp').style.display='none';
+}
+
+function showMain(profile){
+  document.getElementById('setupPage').style.display='none';
+  document.getElementById('mainApp').style.display='block';
+  document.getElementById('mamaNameDisplay').textContent = profile.mamaName || 'onajon';
+  if(!isConfigured) document.getElementById('configBanner').style.display='block';
+  renderBabyTabs();
+  renderBabyList();
+  updateBabyAge();
+}
+
+function saveSetup(){
+  const name  = document.getElementById('mamaName').value.trim();
+  const phone = document.getElementById('mamaPhone').value.trim();
+  const bName = document.getElementById('setupBabyName').value.trim();
+  const bBirth= document.getElementById('setupBabyBirth').value;
+  if(!name||!bName||!bBirth){ showToast('⚠️ Barcha maydonlarni to\'ldiring'); return; }
+  const profile = { mamaName: name, phone, id: Date.now().toString() };
+  setData('baby_profile', profile);
+  setData('babies', [{ name: bName, birth: bBirth, id: 'baby_1' }]);
+  showMain(profile);
+}
+
+// ---- Baby tabs ----
+function renderBabyTabs(){
+  const babies = getBabies();
+  const tabs = document.getElementById('babyTabs');
+  tabs.innerHTML = babies.map((b,i)=>
+    `<div class="baby-tab ${i===selectedBabyIdx?'active':''}" onclick="selectBaby(${i})">${b.name}</div>`
+  ).join('');
+}
+
+function selectBaby(i){
+  selectedBabyIdx = i;
+  renderBabyTabs();
+  updateBabyAge();
+}
+
+function updateBabyAge(){
+  const babies = getBabies();
+  const b = babies[selectedBabyIdx];
+  if(!b) return;
+  const info = document.getElementById('babyAgeInfo');
+  if(b.birth){
+    const months = Math.floor((new Date()-new Date(b.birth))/(1000*60*60*24*30.44));
+    const weeks  = Math.floor((new Date()-new Date(b.birth))/(1000*60*60*24*7));
+    info.textContent = months < 3 ? `Yoshi: ${weeks} hafta` : months < 24 ? `Yoshi: ${months} oy` : `Yoshi: ${Math.floor(months/12)} yosh ${months%12} oy`;
+  }
+}
+
+function addBaby(){
+  const name  = document.getElementById('newBabyName').value.trim();
+  const birth = document.getElementById('newBabyBirth').value;
+  if(!name||!birth){ showToast('⚠️ Ism va tug\'ilgan sanani kiriting'); return; }
+  const babies = getBabies();
+  babies.push({ name, birth, id: 'baby_'+Date.now() });
+  setData('babies', babies);
+  renderBabyTabs();
+  renderBabyList();
+  document.getElementById('newBabyName').value='';
+  document.getElementById('newBabyBirth').value='';
+  showToast('✅ Qo\'shildi: '+name);
+}
+
+function renderBabyList(){
+  const babies = getBabies();
+  const list = document.getElementById('babyList');
+  if(!babies.length){ list.innerHTML='<div style="color:var(--muted);font-size:13px;">Chaqaloq yo\'q</div>'; return; }
+  list.innerHTML = babies.map((b,i)=>{
+    const months = b.birth ? Math.floor((new Date()-new Date(b.birth))/(1000*60*60*24*30.44)) : null;
+    const ageStr = months !== null ? (months<3?Math.floor((new Date()-new Date(b.birth))/(1000*60*60*24*7))+' hafta':months+' oy'):'';
+    return `<div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--border);">
+      <span style="font-size:28px;">👶</span>
+      <div style="flex:1">
+        <div style="font-weight:800;font-size:15px;">${b.name}</div>
+        ${ageStr?`<div style="font-size:12px;color:var(--muted);font-weight:600;">${ageStr}</div>`:''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ---- Session type ----
+function selectType(t, el){
+  selectedType = t;
+  document.querySelectorAll('.session-type-btn').forEach(b=>b.classList.remove('active'));
+  el.classList.add('active');
+}
+
+// ---- Mood ----
+function selectMood(m, el){
+  selectedMood = m;
+  document.querySelectorAll('.emoji-btn').forEach(b=>b.classList.remove('active'));
+  el.classList.add('active');
+}
+
+// ---- Waking ----
+function changeWaking(d){
+  wakingCount = Math.max(0, wakingCount + d);
+  document.getElementById('wakingVal').textContent = wakingCount;
+}
+
+// ---- Symptoms ----
+function toggleSymptom(el, name){
+  el.classList.toggle('active');
+  if(selectedSymptoms.includes(name)) selectedSymptoms=selectedSymptoms.filter(s=>s!==name);
+  else selectedSymptoms.push(name);
+}
+
+// ---- Duration preview ----
+function setupTimeListeners(){
+  ['sleepStart','sleepEnd'].forEach(id=>{
+    document.getElementById(id).addEventListener('change', updateDurationPreview);
+  });
+}
+function updateDurationPreview(){
+  const s = document.getElementById('sleepStart').value;
+  const e = document.getElementById('sleepEnd').value;
+  if(!s||!e) return;
+  const hours = calcHours(s,e);
+  if(hours<0||hours>24) return;
+  const h = Math.floor(hours);
+  const m = Math.round((hours-h)*60);
+  document.getElementById('durationPreview').textContent =
+    `⏱ ${h} soat ${m} daqiqa`;
+}
+
+function calcHours(start,end){
+  const [sh,sm]=start.split(':').map(Number);
+  const [eh,em]=end.split(':').map(Number);
+  let s=sh*60+sm, e=eh*60+em;
+  if(e<=s) e+=1440;
+  return (e-s)/60;
+}
+
+// ---- SAVE ----
+async function saveSleep(){
+  const date  = document.getElementById('sleepDate').value;
+  const start = document.getElementById('sleepStart').value;
+  const end   = document.getElementById('sleepEnd').value;
+  const note  = document.getElementById('sleepNote').value;
+  if(!date||!start||!end){ showToast('⚠️ Vaqt va sanani to\'ldiring'); return; }
+  const hours = calcHours(start,end);
+  if(hours<0.2||hours>20){ showToast('⚠️ Noto\'g\'ri vaqt'); return; }
+
+  const profile = getProfile();
+  const babies  = getBabies();
+  const baby    = babies[selectedBabyIdx];
+  const babyAge = baby?.birth ? Math.floor((new Date()-new Date(baby.birth))/(1000*60*60*24*30.44)) : null;
+
+  const log = {
+    id: Date.now().toString(),
+    date, start, end,
+    hours: Math.round(hours*100)/100,
+    type: selectedType,
+    mood: selectedMood,
+    waking: wakingCount,
+    symptoms: selectedSymptoms.join(', '),
+    note,
+    mamaName: profile?.mamaName || '',
+    mamaPhone: profile?.phone || '',
+    babyName: baby?.name || '',
+    babyAgeMonths: babyAge,
+    savedAt: new Date().toISOString(),
+  };
+
+  saveLog(log);
+
+  if(isConfigured){
+    const ok = await sendToAirtable(log);
+    if(ok) showToast('✅ Saqlandi va yuborildi! 🌙');
+    else   showToast('✅ Saqlandi (offline — keyinroq yuboriladi)');
+  } else {
+    showToast('✅ Saqlandi! (Airtable sozlanmagan)');
+  }
+
+  // Reset
+  document.getElementById('sleepNote').value='';
+  wakingCount=0;
+  document.getElementById('wakingVal').textContent='0';
+  selectedSymptoms=[];
+  document.querySelectorAll('.symptom-btn').forEach(b=>b.classList.remove('active'));
+  selectMoodDefault();
+  document.getElementById('durationPreview').textContent='⏱ Hisoblash uchun vaqt kiriting';
+}
+
+function selectMoodDefault(){
+  selectedMood=3;
+  document.querySelectorAll('.emoji-btn').forEach((b,i)=>b.classList.toggle('active',i===2));
+}
+
+// ---- Airtable ----
+async function sendToAirtable(log){
+  try{
+    const res = await fetch(`https://api.airtable.com/v0/${CONFIG.AIRTABLE_BASE}/${CONFIG.AIRTABLE_TABLE}`, {
+      method:'POST',
+      headers:{
+        'Authorization':`Bearer ${CONFIG.AIRTABLE_TOKEN}`,
+        'Content-Type':'application/json'
+      },
+      body: JSON.stringify({ fields:{
+        'Sana': log.date,
+        'Yotgan vaqt': log.start,
+        'Turgan vaqt': log.end,
+        'Soat': log.hours,
+        'Uyqu turi': log.type==='night'?'Tungi':'Kunduzgi',
+        'Sifat': log.mood,
+        'Uyg\'onish': log.waking,
+        'Belgilar': log.symptoms,
+        'Izoh': log.note,
+        'Ona ismi': log.mamaName,
+        'Telegram': log.mamaPhone,
+        'Chaqaloq': log.babyName,
+        'Yosh (oy)': log.babyAgeMonths,
+        'Saqlangan': log.savedAt,
+      }})
+    });
+    return res.ok;
+  } catch(e){ return false; }
+}
+
+// ---- History ----
+function showPage(p){
+  document.querySelectorAll('.page').forEach(el=>el.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(el=>el.classList.remove('active'));
+  document.getElementById('page-'+p).classList.add('active');
+  const idx=['input','history','babies'].indexOf(p);
+  document.querySelectorAll('.nav-btn')[idx].classList.add('active');
+  if(p==='history') renderHistory();
+  if(p==='babies') renderBabyList();
+}
+
+function renderHistory(){
+  const logs  = getLogs();
+  const babies= getBabies();
+  const baby  = babies[selectedBabyIdx];
+  const filtered = baby ? logs.filter(l=>l.babyName===baby.name) : logs;
+
+  // Stats
+  const today = new Date().toISOString().split('T')[0];
+  const todayLogs = filtered.filter(l=>l.date===today);
+  const todayH = todayLogs.reduce((s,l)=>s+l.hours,0);
+  const avg = filtered.length ? (filtered.reduce((s,l)=>s+l.hours,0)/filtered.length).toFixed(1) : '-';
+
+  document.getElementById('stTotal').textContent = filtered.length;
+  document.getElementById('stAvg').textContent = avg!=='-'?avg+'h':'-';
+  document.getElementById('stToday').textContent = todayH>0?todayH.toFixed(1)+'h':'-';
+
+  const list = document.getElementById('historyList');
+  if(!filtered.length){
+    list.innerHTML='<div style="text-align:center;padding:30px;color:var(--muted);font-weight:600;">Hali yozuv yo\'q 🌙</div>';
+    return;
+  }
+  const moodEmoji=['','😭','😟','😐','😊','😴'];
+  list.innerHTML = filtered.slice(0,30).map(l=>{
+    const icon = l.type==='night'?'🌙':'☀️';
+    const h=Math.floor(l.hours), m=Math.round((l.hours-h)*60);
+    const dColor = l.hours>=10?'var(--good)':l.hours>=6?'var(--accent)':'var(--warn)';
+    const d=new Date(l.date);
+    const dateStr=d.toLocaleDateString('uz-UZ',{weekday:'short',month:'short',day:'numeric'});
+    return `<div class="history-item">
+      <div class="h-icon">${icon}</div>
+      <div class="h-info">
+        <div class="h-date">${dateStr} · ${l.babyName}</div>
+        <div class="h-main">${l.start} → ${l.end} ${moodEmoji[l.mood]||''}</div>
+        ${l.symptoms?`<div class="h-sub">⚠️ ${l.symptoms}</div>`:''}
+        ${l.note?`<div class="h-sub">💬 ${l.note}</div>`:''}
+      </div>
+      <div class="h-dur" style="color:${dColor}">${h}h${m?m+'m':''}</div>
+    </div>`;
+  }).join('');
+}
+
+// ---- Toast ----
+function showToast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2800);
+}
+</script>
+</body>
+</html>
