@@ -1,0 +1,852 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Admin — Uyqu Mutaxassisi</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap');
+:root{
+  --bg:#0d1117;--surface:#161b22;--card:#1c2128;--border:#2d333b;
+  --accent:#58a6ff;--green:#3fb950;--yellow:#d29922;--red:#f85149;
+  --purple:#bc8cff;--orange:#ffa657;--text:#e6edf3;--muted:#8b949e;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
+
+/* ── MODALS ── */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:1000;display:flex;align-items:center;justify-content:center;padding:16px;}
+.modal{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:26px;width:100%;max-width:480px;max-height:92vh;overflow-y:auto;}
+.modal-title{font-size:17px;font-weight:700;margin-bottom:6px;}
+.modal-sub{font-size:13px;color:var(--muted);margin-bottom:18px;line-height:1.6;}
+.fl{font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;margin-bottom:5px;display:block;margin-top:12px;}
+.fi{width:100%;background:var(--surface);border:1px solid var(--border);border-radius:9px;padding:10px 13px;font-family:'DM Mono',monospace;font-size:13px;color:var(--text);}
+.fi:focus{outline:none;border-color:var(--accent);}
+.fhint{font-size:11px;color:var(--muted);margin-top:3px;font-style:italic;}
+.fsel{width:100%;background:var(--surface);border:1px solid var(--border);border-radius:9px;padding:10px 13px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;}
+.fsel:focus{outline:none;border-color:var(--accent);}
+
+/* ── LAYOUT ── */
+.sidebar{width:232px;position:fixed;left:0;top:0;bottom:0;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow-y:auto;z-index:10;}
+.main{margin-left:232px;padding:22px;min-height:100vh;}
+
+/* ── SIDEBAR ── */
+.slogo{padding:18px 18px 16px;border-bottom:1px solid var(--border);}
+.slogo-icon{font-size:24px;margin-bottom:4px;}
+.slogo-title{font-size:14px;font-weight:700;}
+.slogo-sub{font-size:11px;color:var(--muted);}
+.snav{padding:10px;flex:1;}
+.snav-label{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;padding:8px 8px 4px;}
+.sitem{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:9px;cursor:pointer;font-size:13px;font-weight:600;color:var(--muted);transition:all .15s;margin-bottom:2px;border:none;background:transparent;width:100%;text-align:left;}
+.sitem:hover{background:var(--card);color:var(--text);}
+.sitem.active{background:rgba(88,166,255,.12);color:var(--accent);}
+.sitem .ni{width:18px;text-align:center;font-size:14px;flex-shrink:0;}
+.sbadge{margin-left:auto;font-size:10px;font-weight:700;border-radius:99px;padding:2px 7px;}
+.sbadge.red{background:var(--red);color:white;}
+.sbadge.green{background:var(--green);color:#0d1117;}
+.smamas{padding:0 10px 10px;}
+.smama{display:flex;align-items:center;gap:7px;padding:5px 8px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:600;color:var(--muted);border:none;background:transparent;width:100%;text-align:left;transition:all .15s;}
+.smama:hover{background:var(--card);color:var(--text);}
+.sdot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+.sfooter{padding:12px 18px;border-top:1px solid var(--border);}
+.sonline{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--muted);}
+.odot{width:7px;height:7px;border-radius:50%;background:var(--green);animation:pulse 2s infinite;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.4;}}
+
+/* ── PAGES ── */
+.page{display:none;}
+.page.active{display:block;}
+.topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px;}
+.ptitle{font-size:20px;font-weight:700;}
+.tactions{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+
+/* ── BUTTONS ── */
+.btn{padding:7px 15px;border-radius:9px;border:1px solid var(--border);background:var(--card);color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;display:inline-flex;align-items:center;gap:6px;}
+.btn:hover{border-color:var(--accent);color:var(--accent);}
+.btn-p{background:var(--accent);border-color:var(--accent);color:#0d1117;}
+.btn-p:hover{filter:brightness(1.1);color:#0d1117;}
+.btn-d{background:rgba(248,81,73,.1);border-color:var(--red);color:var(--red);}
+.btn-d:hover{background:var(--red);color:white;}
+.btn-s{background:rgba(63,185,80,.1);border-color:var(--green);color:var(--green);}
+.btn-s:hover{background:var(--green);color:#0d1117;}
+.btn-sm{padding:4px 9px;font-size:11px;}
+.btn-go{width:100%;padding:12px;background:var(--accent);border:none;border-radius:10px;color:#0d1117;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:700;cursor:pointer;margin-top:16px;}
+
+/* ── STATS GRID ── */
+.sg{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px;}
+.sc{background:var(--card);border:1px solid var(--border);border-radius:13px;padding:15px;}
+.sc-label{font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:7px;}
+.sc-val{font-size:26px;font-weight:700;line-height:1;margin-bottom:3px;}
+.sc-sub{font-size:11px;color:var(--muted);}
+
+/* ── CARDS ── */
+.card{background:var(--card);border:1px solid var(--border);border-radius:13px;padding:17px;margin-bottom:14px;}
+.ch{display:flex;align-items:center;justify-content:space-between;margin-bottom:13px;}
+.ct{font-size:14px;font-weight:700;}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;}
+
+/* ── TABLE ── */
+.tw{overflow-x:auto;}
+table{width:100%;border-collapse:collapse;}
+th{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;text-align:left;padding:8px 11px;border-bottom:1px solid var(--border);white-space:nowrap;}
+td{padding:9px 11px;font-size:13px;border-bottom:1px solid rgba(45,51,59,.5);vertical-align:middle;}
+tr:last-child td{border-bottom:none;}
+tr:hover td{background:rgba(255,255,255,.02);}
+
+/* ── BADGES ── */
+.badge{display:inline-flex;align-items:center;padding:2px 9px;border-radius:99px;font-size:11px;font-weight:700;}
+.b-g{background:rgba(63,185,80,.15);color:var(--green);}
+.b-r{background:rgba(248,81,73,.15);color:var(--red);}
+.b-y{background:rgba(210,153,34,.15);color:var(--yellow);}
+.b-b{background:rgba(88,166,255,.15);color:var(--accent);}
+.b-p{background:rgba(188,140,255,.15);color:var(--purple);}
+.b-gr{background:rgba(139,148,158,.15);color:var(--muted);}
+
+/* ── USER CARDS ── */
+.ucard{background:var(--surface);border:1px solid var(--border);border-radius:11px;padding:15px;margin-bottom:10px;transition:border-color .15s;}
+.ucard:hover{border-color:rgba(88,166,255,.3);}
+.ucard-top{display:flex;align-items:flex-start;gap:11px;margin-bottom:11px;}
+.uavatar{width:42px;height:42px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:700;color:white;flex-shrink:0;}
+.uname{font-size:14px;font-weight:700;margin-bottom:2px;}
+.umeta{font-size:12px;color:var(--muted);line-height:1.5;}
+.ustats{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-bottom:10px;}
+.ustat{background:var(--card);border-radius:7px;padding:7px;text-align:center;}
+.ustat-val{font-family:'DM Mono',monospace;font-size:14px;font-weight:700;color:var(--accent);}
+.ustat-lbl{font-size:10px;color:var(--muted);margin-top:2px;}
+.uactions{display:flex;gap:5px;flex-wrap:wrap;}
+
+/* ── BOT ── */
+.binfo-row{display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--border);}
+.binfo-row:last-child{border-bottom:none;}
+.binfo-lbl{font-size:12px;color:var(--muted);font-weight:600;}
+.infobox{background:linear-gradient(135deg,rgba(88,166,255,.08),rgba(188,140,255,.05));border:1px solid rgba(88,166,255,.2);border-radius:11px;padding:15px;margin-bottom:12px;}
+.infobox-title{font-size:13px;font-weight:700;color:var(--accent);margin-bottom:7px;}
+.infobox-text{font-size:12px;color:var(--muted);line-height:1.7;}
+.upd-item{display:flex;align-items:center;gap:9px;padding:9px 0;border-bottom:1px solid rgba(45,51,59,.5);}
+.upd-item:last-child{border-bottom:none;}
+.upd-ava{width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--purple),var(--accent));display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;}
+.upd-info{flex:1;min-width:0;}
+.upd-name{font-size:13px;font-weight:700;margin-bottom:1px;}
+.upd-text{font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+
+/* ── LOG ROW ── */
+.lr{display:flex;align-items:center;gap:9px;padding:8px 0;border-bottom:1px solid rgba(45,51,59,.5);}
+.lr:last-child{border-bottom:none;}
+.licon{font-size:17px;flex-shrink:0;}
+.linfo{flex:1;min-width:0;}
+.lmain{font-size:13px;font-weight:600;margin-bottom:1px;}
+.lsub{font-size:11px;color:var(--muted);}
+.lhours{font-family:'DM Mono',monospace;font-size:14px;font-weight:600;flex-shrink:0;}
+
+/* ── MESSAGE ── */
+.mta{width:100%;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:11px;font-family:'DM Sans',sans-serif;font-size:14px;color:var(--text);height:105px;resize:none;}
+.mta:focus{outline:none;border-color:var(--accent);}
+.mta::placeholder{color:var(--muted);}
+.tpls{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:10px;}
+.tpl{padding:5px 10px;border-radius:99px;border:1px solid var(--border);background:var(--surface);font-size:11px;font-weight:600;color:var(--muted);cursor:pointer;transition:all .15s;}
+.tpl:hover{border-color:var(--accent);color:var(--accent);}
+
+/* ── MISC ── */
+.chart-wrap{position:relative;height:185px;}
+.loading{text-align:center;padding:30px;color:var(--muted);font-size:13px;}
+.spinner{display:inline-block;width:26px;height:26px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;margin-bottom:8px;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.sinput{background:var(--surface);border:1px solid var(--border);border-radius:9px;padding:8px 13px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;width:200px;}
+.sinput:focus{outline:none;border-color:var(--accent);}
+.toast{position:fixed;bottom:20px;right:20px;background:var(--card);border:1px solid var(--accent);border-radius:11px;padding:10px 18px;font-size:13px;font-weight:600;color:var(--accent);opacity:0;transform:translateY(8px);transition:all .3s;z-index:9999;}
+.toast.show{opacity:1;transform:translateY(0);}
+
+@media(max-width:768px){.sidebar{width:0;overflow:hidden;}.main{margin-left:0;padding:14px;}.sg{grid-template-columns:1fr 1fr;}.g2{grid-template-columns:1fr;}}
+</style>
+</head>
+<body>
+
+<!-- ═══ CONFIG MODAL ═══ -->
+<div class="overlay" id="cfgModal">
+  <div class="modal">
+    <div class="modal-title">🌙 Admin Panel Sozlash</div>
+    <div class="modal-sub">Bir marta kiriting — brauzer eslab qoladi</div>
+    <label class="fl">Airtable Personal Access Token</label>
+    <input class="fi" id="cfgTok" placeholder="patXXXXXXXXXXXXXX">
+    <div class="fhint">→ airtable.com/create/tokens</div>
+    <label class="fl">Airtable Base ID</label>
+    <input class="fi" id="cfgBase" placeholder="appXXXXXXXXXXXXXX">
+    <div class="fhint">→ URL: airtable.com/appXXXX/...</div>
+    <label class="fl">Telegram Bot Token</label>
+    <input class="fi" id="cfgBot" placeholder="1234567890:AAXXXXXXXXXX">
+    <div class="fhint">→ @BotFather dan oling</div>
+    <label class="fl">Sleep Logs jadval nomi</label>
+    <input class="fi" id="cfgTbl" value="SleepLogs">
+    <label class="fl">Users jadval nomi</label>
+    <input class="fi" id="cfgUTbl" value="Users">
+    <div class="fhint">→ Airtable da "Users" nomli yangi jadval yarating</div>
+    <button class="btn-go" onclick="saveConfig()">✅ Kirish</button>
+  </div>
+</div>
+
+<!-- ═══ ADD USER MODAL ═══ -->
+<div class="overlay" id="addModal" style="display:none;">
+  <div class="modal">
+    <div class="modal-title">➕ Yangi ona qo'shish</div>
+    <div class="modal-sub">Ona botga /start bosganida avtomatik ulanadi</div>
+    <label class="fl">To'liq ismi *</label><input class="fi" id="auName" placeholder="Malika Karimova" style="font-family:'DM Sans',sans-serif;">
+    <label class="fl">Telegram username</label><input class="fi" id="auUser" placeholder="@username" style="font-family:'DM Sans',sans-serif;"><div class="fhint">Xabar yuborish uchun kerak</div>
+    <label class="fl">Telefon raqami</label><input class="fi" id="auPhone" placeholder="+998901234567" style="font-family:'DM Sans',sans-serif;">
+    <label class="fl">Chaqaloq ismi</label><input class="fi" id="auBaby" placeholder="Ali" style="font-family:'DM Sans',sans-serif;">
+    <label class="fl">Chaqaloq tug'ilgan sana</label><input type="date" class="fi" id="auBirth" style="font-family:'DM Sans',sans-serif;">
+    <label class="fl">Izoh (ixtiyoriy)</label><input class="fi" id="auNote" placeholder="Muddatidan oldin, egizak..." style="font-family:'DM Sans',sans-serif;">
+    <div style="display:flex;gap:8px;margin-top:14px;">
+      <button class="btn btn-p" style="flex:1;" onclick="saveNewUser()">✅ Qo'shish</button>
+      <button class="btn" onclick="closeOverlay('addModal')">Bekor</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ EDIT USER MODAL ═══ -->
+<div class="overlay" id="editModal" style="display:none;">
+  <div class="modal">
+    <div class="modal-title">✏️ Tahrirlash</div>
+    <input type="hidden" id="euId">
+    <label class="fl">Ismi</label><input class="fi" id="euName" style="font-family:'DM Sans',sans-serif;">
+    <label class="fl">Telegram</label><input class="fi" id="euUser" style="font-family:'DM Sans',sans-serif;">
+    <label class="fl">Telefon</label><input class="fi" id="euPhone" style="font-family:'DM Sans',sans-serif;">
+    <label class="fl">Chaqaloq ismi</label><input class="fi" id="euBaby" style="font-family:'DM Sans',sans-serif;">
+    <label class="fl">Holat</label>
+    <select class="fsel" id="euStatus">
+      <option value="Faol">✅ Faol</option>
+      <option value="Bloklangan">🚫 Bloklangan</option>
+      <option value="Pauza">⏸ Pauza</option>
+    </select>
+    <label class="fl">Izoh</label><input class="fi" id="euNote" style="font-family:'DM Sans',sans-serif;">
+    <div style="display:flex;gap:8px;margin-top:14px;">
+      <button class="btn btn-p" style="flex:1;" onclick="updateUser()">💾 Saqlash</button>
+      <button class="btn" onclick="closeOverlay('editModal')">Bekor</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SIDEBAR ═══ -->
+<div class="sidebar">
+  <div class="slogo">
+    <div class="slogo-icon">🌙</div>
+    <div class="slogo-title">Uyqu Markazi</div>
+    <div class="slogo-sub">Mutaxassis paneli</div>
+  </div>
+  <div class="snav">
+    <div class="snav-label">Asosiy</div>
+    <button class="sitem active" onclick="goPage('dashboard')"><span class="ni">📊</span>Dashboard</button>
+    <button class="sitem" onclick="goPage('users')"><span class="ni">👥</span>Foydalanuvchilar<span class="sbadge green" id="navUC">0</span></button>
+    <button class="sitem" onclick="goPage('bot')"><span class="ni">🤖</span>Bot boshqaruvi<span class="sbadge red" id="navBotBadge" style="display:none">!</span></button>
+    <button class="sitem" onclick="goPage('logs')"><span class="ni">📋</span>Yozuvlar</button>
+    <button class="sitem" onclick="goPage('message')"><span class="ni">💬</span>Xabar yuborish</button>
+    <div class="snav-label" style="margin-top:8px;">Boshqaruv</div>
+    <button class="sitem" onclick="loadAll()"><span class="ni">🔄</span>Yangilash</button>
+    <button class="sitem" onclick="document.getElementById('cfgModal').style.display='flex'"><span class="ni">⚙️</span>Sozlamalar</button>
+    <div class="snav-label" style="margin-top:8px;">Onalar</div>
+    <div class="smamas" id="sidebarMamas"></div>
+  </div>
+  <div class="sfooter">
+    <div class="sonline"><div class="odot"></div><span id="lastRef">Yuklanmagan</span></div>
+  </div>
+</div>
+
+<!-- ═══ MAIN ═══ -->
+<div class="main">
+
+<!-- DASHBOARD -->
+<div class="page active" id="page-dashboard">
+  <div class="topbar">
+    <div class="ptitle">📊 Dashboard</div>
+    <div class="tactions">
+      <button class="btn" onclick="loadAll()">🔄 Yangilash</button>
+      <button class="btn btn-p" onclick="goPage('message')">💬 Xabar yuborish</button>
+    </div>
+  </div>
+  <div class="sg">
+    <div class="sc"><div class="sc-label">Jami onalar</div><div class="sc-val" style="color:var(--accent)" id="stM">-</div><div class="sc-sub">ro'yxatda</div></div>
+    <div class="sc"><div class="sc-label">Bugungi yozuvlar</div><div class="sc-val" style="color:var(--green)" id="stT">-</div><div class="sc-sub">bugun</div></div>
+    <div class="sc"><div class="sc-label">Jami yozuvlar</div><div class="sc-val" style="color:var(--purple)" id="stAll">-</div><div class="sc-sub">bazada</div></div>
+    <div class="sc"><div class="sc-label">Diqqat talab</div><div class="sc-val" style="color:var(--red)" id="stA">-</div><div class="sc-sub">muammo bor</div></div>
+  </div>
+  <div class="g2">
+    <div class="card" style="margin:0;"><div class="ch"><div class="ct">📈 Haftalik o'rtacha (soat)</div></div><div class="chart-wrap"><canvas id="wChart"></canvas></div></div>
+    <div class="card" style="margin:0;"><div class="ch"><div class="ct">⚠️ Diqqat talab onalar</div></div><div id="alertList"><div class="loading"><div class="spinner"></div><br>Yuklanmoqda...</div></div></div>
+  </div>
+  <div class="card"><div class="ch"><div class="ct">🌙 So'nggi yozuvlar</div><button class="btn btn-sm" onclick="goPage('logs')">Barchasini →</button></div><div id="recentLogs"><div class="loading"><div class="spinner"></div><br>Yuklanmoqda...</div></div></div>
+</div>
+
+<!-- USERS -->
+<div class="page" id="page-users">
+  <div class="topbar">
+    <div class="ptitle">👥 Foydalanuvchilar</div>
+    <div class="tactions">
+      <input class="sinput" id="uSearch" placeholder="🔍 Qidirish..." oninput="renderUsers()">
+      <select class="fsel" id="uStatusF" onchange="renderUsers()" style="width:auto;padding:8px 12px;">
+        <option value="">Barcha holat</option>
+        <option value="Faol">✅ Faol</option>
+        <option value="Bloklangan">🚫 Bloklangan</option>
+        <option value="Pauza">⏸ Pauza</option>
+      </select>
+      <button class="btn btn-p" onclick="document.getElementById('addModal').style.display='flex'">➕ Qo'shish</button>
+    </div>
+  </div>
+
+  <div class="g2" style="margin-bottom:14px;">
+    <div class="card" style="margin:0;">
+      <div style="display:flex;gap:18px;flex-wrap:wrap;">
+        <div><div class="sc-label">Jami</div><div style="font-size:22px;font-weight:700;color:var(--accent)" id="uStat0">0</div></div>
+        <div><div class="sc-label">Faol</div><div style="font-size:22px;font-weight:700;color:var(--green)" id="uStat1">0</div></div>
+        <div><div class="sc-label">Bloklangan</div><div style="font-size:22px;font-weight:700;color:var(--red)" id="uStat2">0</div></div>
+        <div><div class="sc-label">Bot ulangan</div><div style="font-size:22px;font-weight:700;color:var(--purple)" id="uStat3">0</div></div>
+      </div>
+    </div>
+    <div class="card" style="margin:0;">
+      <div class="ct" style="margin-bottom:10px;">📢 Hammaga xabar</div>
+      <div style="display:flex;gap:8px;">
+        <input class="fi" id="broadcastMsg" placeholder="Xabar matni..." style="flex:1;font-family:'DM Sans',sans-serif;font-size:13px;padding:9px 12px;">
+        <button class="btn btn-p" onclick="broadcastAll()">📤</button>
+      </div>
+      <div style="font-size:11px;color:var(--muted);margin-top:6px;">Faqat botga ulangan faol onalarga yuboriladi</div>
+    </div>
+  </div>
+  <div id="usersList"><div class="loading"><div class="spinner"></div><br>Yuklanmoqda...</div></div>
+</div>
+
+<!-- BOT -->
+<div class="page" id="page-bot">
+  <div class="topbar">
+    <div class="ptitle">🤖 Bot boshqaruvi</div>
+    <div class="tactions">
+      <button class="btn" onclick="fetchBotInfo()">ℹ️ Bot holati</button>
+      <button class="btn" onclick="fetchUpdates()">📩 Yangi xabarlar</button>
+      <button class="btn btn-p" onclick="syncBotUsers()">🔄 Onalarni import qilish</button>
+    </div>
+  </div>
+
+  <div class="g2">
+    <div class="card" style="margin:0;">
+      <div class="ch"><div class="ct">🤖 Bot ma'lumoti</div></div>
+      <div id="botInfoCard"><div style="color:var(--muted);font-size:13px;">"Bot holati" tugmasini bosing</div></div>
+    </div>
+    <div class="card" style="margin:0;">
+      <div class="ch"><div class="ct">📡 Qanday ishlaydi</div></div>
+      <div class="infobox">
+        <div class="infobox-title">Avtomatik ulanish jarayoni</div>
+        <div class="infobox-text">
+          1️⃣ Ona botga <strong>/start</strong> yozadi<br>
+          2️⃣ Uning <strong>chat_id</strong> saqlanadi<br>
+          3️⃣ <strong>Import qilish</strong> bosilganda Airtable ga yoziladi<br>
+          4️⃣ Endi ona ga xabar yuborish mumkin ✅
+        </div>
+      </div>
+      <button class="btn btn-p" style="width:100%;" onclick="syncBotUsers()">🔄 Botdan foydalanuvchilarni import qilish</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="ch"><div class="ct">📋 Bot buyruqlari (menyu)</div><button class="btn btn-sm btn-p" onclick="setBotCommands()">✅ Telegram ga saqlash</button></div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:12px;">Onalar Telegram menyusida ko'radigan buyruqlar:</div>
+    <div style="display:flex;flex-direction:column;gap:7px;">
+      <div style="display:flex;gap:10px;align-items:center;font-size:13px;"><code style="background:var(--surface);padding:5px 10px;border-radius:7px;color:var(--green);width:115px;font-family:'DM Mono',monospace;">/start</code><span style="color:var(--muted);">Botni boshlash va ro'yxatdan o'tish</span></div>
+      <div style="display:flex;gap:10px;align-items:center;font-size:13px;"><code style="background:var(--surface);padding:5px 10px;border-radius:7px;color:var(--green);width:115px;font-family:'DM Mono',monospace;">/log</code><span style="color:var(--muted);">Uyqu ma'lumotini kiritish</span></div>
+      <div style="display:flex;gap:10px;align-items:center;font-size:13px;"><code style="background:var(--surface);padding:5px 10px;border-radius:7px;color:var(--green);width:115px;font-family:'DM Mono',monospace;">/history</code><span style="color:var(--muted);">So'nggi 7 kunlik yozuvlar</span></div>
+      <div style="display:flex;gap:10px;align-items:center;font-size:13px;"><code style="background:var(--surface);padding:5px 10px;border-radius:7px;color:var(--green);width:115px;font-family:'DM Mono',monospace;">/help</code><span style="color:var(--muted);">Yordam va qo'llanma</span></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="ch"><div class="ct">📩 Botga kelgan so'nggi xabarlar</div><button class="btn btn-sm" onclick="fetchUpdates()">🔄</button></div>
+    <div id="botUpdates"><div style="color:var(--muted);font-size:13px;">"Yangi xabarlar" yoki "Import" tugmasini bosing</div></div>
+  </div>
+
+  <div class="card">
+    <div class="ch"><div class="ct">📢 Barcha ulangan onalarga xabar</div></div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:10px;">Markdown ishlatish mumkin: *qalin*, _kursiv_, `kod`</div>
+    <textarea class="mta" id="botBcastMsg" placeholder="Xabar matni..." style="margin-bottom:10px;"></textarea>
+    <button class="btn btn-p" style="width:100%;" onclick="botBroadcast()">📤 Barcha ulangan onalarga yuborish</button>
+  </div>
+</div>
+
+<!-- LOGS -->
+<div class="page" id="page-logs">
+  <div class="topbar">
+    <div class="ptitle">📋 Barcha yozuvlar</div>
+    <div class="tactions">
+      <select class="fsel" id="fMama" onchange="renderLogs()" style="width:auto;padding:8px 12px;"><option value="">Barcha onalar</option></select>
+      <select class="fsel" id="fType" onchange="renderLogs()" style="width:auto;padding:8px 12px;"><option value="">Barcha tur</option><option value="Tungi">🌙 Tungi</option><option value="Kunduzgi">☀️ Kunduzgi</option></select>
+    </div>
+  </div>
+  <div class="card">
+    <div class="tw">
+      <table>
+        <thead><tr><th>Sana</th><th>Ona / Chaqaloq</th><th>Vaqt</th><th>Soat</th><th>Tur</th><th>Sifat</th><th>Uyg'onish</th><th>Belgilar</th><th>Amal</th></tr></thead>
+        <tbody id="logsBody"><tr><td colspan="9" style="text-align:center;color:var(--muted);padding:24px;">Yuklanmoqda...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- MESSAGE -->
+<div class="page" id="page-message">
+  <div class="topbar"><div class="ptitle">💬 Telegram maslahat</div></div>
+  <div class="g2">
+    <div class="card" style="margin:0;">
+      <div class="ch"><div class="ct">📨 Xabar yozish</div></div>
+      <label class="fl" style="margin-top:0;">Kimga?</label>
+      <select id="msgTarget" class="fsel" style="margin-bottom:12px;width:100%;" onchange="updatePreview()"><option value="">-- Ona tanlang --</option></select>
+      <label class="fl">Tez shablonlar</label>
+      <div class="tpls">
+        <button class="tpl" onclick="useTpl('ok')">👏 Barakalla</button>
+        <button class="tpl" onclick="useTpl('kam')">⬆️ Ko'proq uxlatsin</button>
+        <button class="tpl" onclick="useTpl('kop')">⬇️ Juda ko'p</button>
+        <button class="tpl" onclick="useTpl('jadval')">🕐 Muntazamlik</button>
+        <button class="tpl" onclick="useTpl('shif')">🏥 Shifokorga</button>
+        <button class="tpl" onclick="useTpl('uygh')">🌙 Uyg'onish</button>
+      </div>
+      <label class="fl">Xabar matni</label>
+      <textarea class="mta" id="msgText" placeholder="Maslahat matnini yozing..." oninput="updatePreview()" style="margin-bottom:10px;"></textarea>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-p" style="flex:1;" onclick="sendMsg()">📤 Yuborish</button>
+        <button class="btn" onclick="$('msgText').value='';updatePreview()">🗑</button>
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:14px;">
+      <div class="card" style="margin:0;"><div class="ch"><div class="ct">👁 Ko'rinish</div></div><div id="msgPreview" style="background:var(--surface);border-radius:9px;padding:11px;font-size:14px;line-height:1.7;min-height:85px;white-space:pre-wrap;"><span style="color:var(--muted)">Xabar ko'rinishi...</span></div></div>
+      <div class="card" style="margin:0;"><div class="ch"><div class="ct">📊 Tanlangan ona</div></div><div id="mamaStat" style="color:var(--muted);font-size:13px;">Ona tanlang...</div></div>
+    </div>
+  </div>
+  <div class="card" style="margin-top:14px;"><div class="ch"><div class="ct">📜 Yuborilgan xabarlar</div></div><div id="msgHist"><div style="color:var(--muted);font-size:13px;">Hali xabar yuborilmagan</div></div></div>
+</div>
+
+</div><!-- /main -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ════════════════════════════════════════════════
+const PAGES=['dashboard','users','bot','logs','message'];
+const CLR=['#58a6ff','#3fb950','#ffa657','#bc8cff','#f85149','#d29922','#79c0ff','#56d364'];
+const MHKEY='adm_mh';const BUKEY='bot_cu';
+let CFG={},logs=[],users=[],botUsers={},wChart=null;
+
+// ── INIT ──
+window.onload=()=>{
+  const s=localStorage.getItem('adm_cfg_v4');
+  if(s){CFG=JSON.parse(s);$('cfgModal').style.display='none';loadAll();}
+  botUsers=JSON.parse(localStorage.getItem(BUKEY)||'{}');
+  renderMsgHist();
+};
+const $=id=>document.getElementById(id);
+const showToast=msg=>{const t=$('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),3200);};
+const closeOverlay=id=>{$(id).style.display='none';};
+
+function saveConfig(){
+  CFG={tok:$('cfgTok').value.trim(),base:$('cfgBase').value.trim(),bot:$('cfgBot').value.trim(),tbl:$('cfgTbl').value.trim()||'SleepLogs',utbl:$('cfgUTbl').value.trim()||'Users'};
+  if(!CFG.tok||!CFG.base){showToast('⚠️ Token va Base ID kerak!');return;}
+  localStorage.setItem('adm_cfg_v4',JSON.stringify(CFG));
+  $('cfgModal').style.display='none';
+  loadAll();
+}
+
+// ── LOAD ALL ──
+async function loadAll(){
+  showToast('🔄 Yuklanmoqda...');
+  await Promise.all([loadLogs(),loadUsers()]);
+  $('lastRef').textContent=new Date().toLocaleTimeString('uz-UZ');
+  renderDash();renderSidebar();renderUsers();renderLogs();fillSelects();renderMsgHist();
+}
+
+async function atGet(tbl,extra=''){
+  const url=`https://api.airtable.com/v0/${CFG.base}/${encodeURIComponent(tbl)}?pageSize=100${extra}`;
+  const r=await fetch(url,{headers:{Authorization:'Bearer '+CFG.tok}});
+  if(!r.ok)throw new Error(r.status);
+  return r.json();
+}
+
+async function loadLogs(){
+  if(!CFG.tok)return;
+  try{
+    let recs=[],off='';
+    while(true){
+      const d=await atGet(CFG.tbl,'&sort[0][field]=Saqlangan&sort[0][direction]=desc'+(off?'&offset='+off:''));
+      recs=recs.concat(d.records);
+      if(d.offset)off=d.offset; else break;
+      if(recs.length>=600)break;
+    }
+    logs=recs.map(r=>({id:r.id,date:r.fields['Sana']||'',start:r.fields['Yotgan vaqt']||'',end:r.fields['Turgan vaqt']||'',hours:parseFloat(r.fields['Soat'])||0,type:r.fields['Uyqu turi']||'',mood:parseInt(r.fields['Sifat'])||3,waking:parseInt(r.fields["Uyg'onish"])||0,symptoms:r.fields['Belgilar']||'',note:r.fields['Izoh']||'',mamaName:r.fields['Ona ismi']||'',mamaPhone:r.fields['Telegram']||'',babyName:r.fields['Chaqaloq']||'',babyAge:r.fields['Yosh (oy)']||'',savedAt:r.fields['Saqlangan']||''}));
+  }catch(e){showToast('❌ Logs: '+e.message);}
+}
+
+async function loadUsers(){
+  if(!CFG.tok)return;
+  try{
+    const d=await atGet(CFG.utbl);
+    users=d.records.map(r=>({_id:r.id,name:r.fields['Ism']||'',username:r.fields['Telegram']||'',phone:r.fields['Telefon']||'',babyName:r.fields['Chaqaloq ismi']||'',babyBirth:r.fields["Tug'ilgan sana"]||'',status:r.fields['Holat']||'Faol',chatId:r.fields['Chat ID']||'',note:r.fields['Izoh']||'',addedAt:r.fields["Qo'shildi"]||''}));
+  }catch(e){users=[];}
+  $('navUC').textContent=users.length;
+}
+
+// ── USERS CRUD ──
+async function saveNewUser(){
+  const u={name:$('auName').value.trim(),user:$('auUser').value.trim(),phone:$('auPhone').value.trim(),baby:$('auBaby').value.trim(),birth:$('auBirth').value,note:$('auNote').value.trim()};
+  if(!u.name){showToast('⚠️ Ism kerak');return;}
+  const ok=await atPost(CFG.utbl,{'Ism':u.name,'Telegram':u.user,'Telefon':u.phone,'Chaqaloq ismi':u.baby,"Tug'ilgan sana":u.birth,'Holat':'Faol','Izoh':u.note,"Qo'shildi":new Date().toISOString()});
+  if(ok){showToast('✅ Qo\'shildi: '+u.name);closeOverlay('addModal');['auName','auUser','auPhone','auBaby','auBirth','auNote'].forEach(id=>$(id).value='');await loadUsers();renderUsers();renderSidebar();fillSelects();}
+  else showToast('❌ Xatolik. "Users" jadvalini yaratdingizmi?');
+}
+
+function openEdit(idx){
+  const u=users[idx];
+  $('euId').value=u._id;$('euName').value=u.name;$('euUser').value=u.username;$('euPhone').value=u.phone;$('euBaby').value=u.babyName;$('euStatus').value=u.status;$('euNote').value=u.note;
+  $('editModal').style.display='flex';
+}
+
+async function updateUser(){
+  const id=$('euId').value;
+  const f={'Ism':$('euName').value,'Telegram':$('euUser').value,'Telefon':$('euPhone').value,'Chaqaloq ismi':$('euBaby').value,'Holat':$('euStatus').value,'Izoh':$('euNote').value};
+  const r=await fetch(`https://api.airtable.com/v0/${CFG.base}/${encodeURIComponent(CFG.utbl)}/${id}`,{method:'PATCH',headers:{Authorization:'Bearer '+CFG.tok,'Content-Type':'application/json'},body:JSON.stringify({fields:f})});
+  if(r.ok){showToast('✅ Yangilandi');closeOverlay('editModal');await loadUsers();renderUsers();}
+  else showToast('❌ Xatolik');
+}
+
+async function toggleStatus(idx){
+  const u=users[idx],ns=u.status==='Faol'?'Bloklangan':'Faol';
+  const r=await fetch(`https://api.airtable.com/v0/${CFG.base}/${encodeURIComponent(CFG.utbl)}/${u._id}`,{method:'PATCH',headers:{Authorization:'Bearer '+CFG.tok,'Content-Type':'application/json'},body:JSON.stringify({fields:{Holat:ns}})});
+  if(r.ok){showToast(ns==='Bloklangan'?'🚫 Bloklandi':'✅ Faollashtirildi');await loadUsers();renderUsers();}
+}
+
+async function deleteUser(idx){
+  if(!confirm('O\'chirilsinmi?'))return;
+  const u=users[idx];
+  const r=await fetch(`https://api.airtable.com/v0/${CFG.base}/${encodeURIComponent(CFG.utbl)}/${u._id}`,{method:'DELETE',headers:{Authorization:'Bearer '+CFG.tok}});
+  if(r.ok){showToast('🗑 O\'chirildi');await loadUsers();renderUsers();renderSidebar();}
+}
+
+async function atPost(tbl,fields){
+  try{const r=await fetch(`https://api.airtable.com/v0/${CFG.base}/${encodeURIComponent(tbl)}`,{method:'POST',headers:{Authorization:'Bearer '+CFG.tok,'Content-Type':'application/json'},body:JSON.stringify({fields})});return r.ok;}catch(e){return false;}
+}
+
+// ── RENDER USERS ──
+function renderUsers(){
+  const sq=($('uSearch').value||'').toLowerCase(),sf=$('uStatusF').value;
+  const list=users.filter(u=>(!sq||(u.name+u.username+u.babyName).toLowerCase().includes(sq))&&(!sf||u.status===sf));
+  $('uStat0').textContent=users.length;
+  $('uStat1').textContent=users.filter(u=>u.status==='Faol').length;
+  $('uStat2').textContent=users.filter(u=>u.status==='Bloklangan').length;
+  $('uStat3').textContent=users.filter(u=>getChatId(u.username)||u.chatId).length;
+  const el=$('usersList');
+  if(!list.length){el.innerHTML='<div class="loading">Foydalanuvchi topilmadi</div>';return;}
+  el.innerHTML=list.map(u=>{
+    const ul=logs.filter(l=>l.mamaName===u.name);
+    const avg=ul.length?(ul.reduce((s,l)=>s+l.hours,0)/ul.length).toFixed(1):'-';
+    const last=ul[0]?.date||'—';
+    const chatId=getChatId(u.username)||u.chatId;
+    const sb=u.status==='Faol'?'b-g':u.status==='Bloklangan'?'b-r':'b-y';
+    const ci=users.indexOf(u);
+    const col=CLR[ci%CLR.length];
+    const today=new Date().toISOString().split('T')[0];
+    const hasT=ul.some(l=>l.date===today);
+    const age=u.babyBirth?getAge(u.babyBirth):'';
+    return `<div class="ucard">
+      <div class="ucard-top">
+        <div class="uavatar" style="background:linear-gradient(135deg,${col},${CLR[(ci+3)%CLR.length]})">${u.name.charAt(0)||'?'}</div>
+        <div style="flex:1;min-width:0;">
+          <div class="uname">${u.name} ${hasT?'<span style="font-size:11px;">✅ Bugun</span>':''}</div>
+          <div class="umeta">${u.username||'username yo\'q'}${u.phone?' · '+u.phone:''}</div>
+          ${u.babyName?`<div class="umeta">👶 ${u.babyName}${age?' · '+age:''}</div>`:''}
+          ${u.note?`<div class="umeta" style="color:var(--orange);">📝 ${u.note}</div>`:''}
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;">
+          <span class="badge ${sb}">${u.status}</span>
+          ${chatId?`<span class="badge b-p">🤖 ID:${chatId}</span>`:'<span class="badge b-gr">📵 Ulanmagan</span>'}
+        </div>
+      </div>
+      <div class="ustats">
+        <div class="ustat"><div class="ustat-val">${ul.length}</div><div class="ustat-lbl">Yozuv</div></div>
+        <div class="ustat"><div class="ustat-val">${avg}h</div><div class="ustat-lbl">O'rtacha</div></div>
+        <div class="ustat"><div class="ustat-val" style="font-size:11px;">${last}</div><div class="ustat-lbl">Oxirgi</div></div>
+      </div>
+      <div class="uactions">
+        <button class="btn btn-sm" onclick="openMsgTo('${u.name}')">💬 Xabar</button>
+        <button class="btn btn-sm" onclick="openEdit(${users.indexOf(u)})">✏️ Tahrir</button>
+        <button class="btn btn-sm ${u.status==='Faol'?'btn-d':'btn-s'}" onclick="toggleStatus(${users.indexOf(u)})">${u.status==='Faol'?'🚫 Bloklash':'✅ Faollashtirish'}</button>
+        ${chatId?`<button class="btn btn-sm btn-p" onclick="quickMsg('${chatId}','${u.name}')">📤 Bot xabar</button>`:''}
+        <button class="btn btn-sm" onclick="filterByMama('${u.name}')">📋 Yozuvlar</button>
+        <button class="btn btn-sm btn-d" onclick="deleteUser(${users.indexOf(u)})">🗑 O'chirish</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── BOT ──
+async function fetchBotInfo(){
+  if(!CFG.bot){showToast('⚠️ Bot token kerak');return;}
+  try{
+    const r=await fetch(`https://api.telegram.org/bot${CFG.bot}/getMe`);
+    const d=await r.json();
+    if(!d.ok){showToast('❌ '+d.description);return;}
+    const b=d.result;
+    $('botInfoCard').innerHTML=`
+      <div class="binfo-row"><span class="binfo-lbl">Nomi</span><strong>${b.first_name}</strong></div>
+      <div class="binfo-row"><span class="binfo-lbl">Username</span><a href="https://t.me/${b.username}" target="_blank" style="color:var(--accent)">@${b.username}</a></div>
+      <div class="binfo-row"><span class="binfo-lbl">Bot ID</span><span style="font-family:'DM Mono',monospace;">${b.id}</span></div>
+      <div class="binfo-row"><span class="binfo-lbl">Holat</span><span class="badge b-g">✅ Faol</span></div>
+      <div class="binfo-row"><span class="binfo-lbl">Link</span><a href="https://t.me/${b.username}" target="_blank" style="color:var(--accent);">t.me/${b.username}</a></div>`;
+    showToast('✅ Bot faol');
+  }catch(e){showToast('❌ '+e.message);}
+}
+
+async function fetchUpdates(){
+  if(!CFG.bot){showToast('⚠️ Bot token kerak');return;}
+  try{
+    const r=await fetch(`https://api.telegram.org/bot${CFG.bot}/getUpdates?limit=100`);
+    const d=await r.json();
+    if(!d.ok){showToast('❌ '+d.description);return;}
+    let newCount=0;
+    d.result.forEach(u=>{
+      const from=u.message?.from||u.callback_query?.from;
+      if(from?.username&&!botUsers[from.username.toLowerCase()]){newCount++;}
+      if(from?.username)botUsers[from.username.toLowerCase()]=String(from.id);
+    });
+    localStorage.setItem(BUKEY,JSON.stringify(botUsers));
+    if(newCount>0){$('navBotBadge').style.display='';$('navBotBadge').textContent=newCount;}
+
+    const el=$('botUpdates');
+    if(!d.result.length){el.innerHTML='<div style="color:var(--muted);font-size:13px;">Yangi xabar yo\'q</div>';return;}
+    el.innerHTML=d.result.slice(-20).reverse().map(u=>{
+      const from=u.message?.from;if(!from)return '';
+      const name=(from.first_name||'')+(from.last_name?' '+from.last_name:'');
+      const un=from.username||'';
+      const text=u.message?.text||'(media)';
+      const time=u.message?.date?new Date(u.message.date*1e3).toLocaleString('uz-UZ'):'';
+      return `<div class="upd-item">
+        <div class="upd-ava">${name.charAt(0)||'?'}</div>
+        <div class="upd-info">
+          <div class="upd-name">${name} ${un?`<span style="color:var(--muted)">@${un}</span>`:''} <span style="font-size:10px;color:var(--muted);">#${from.id}</span></div>
+          <div class="upd-text">${text.substring(0,60)}</div>
+          <div style="font-size:10px;color:var(--muted);margin-top:2px;">${time}</div>
+        </div>
+        ${un?`<button class="btn btn-sm" onclick="quickMsg('${from.id}','${name}')">💬</button>`:''}
+      </div>`;
+    }).join('');
+    showToast(`✅ ${d.result.length} ta update`);
+  }catch(e){showToast('❌ '+e.message);}
+}
+
+async function syncBotUsers(){
+  showToast('🔄 Sinxronlanmoqda...');
+  await fetchUpdates();
+  let n=0;
+  for(const u of users){
+    const un=(u.username||'').replace('@','').toLowerCase();
+    const cid=botUsers[un];
+    if(cid&&cid!==u.chatId){
+      await fetch(`https://api.airtable.com/v0/${CFG.base}/${encodeURIComponent(CFG.utbl)}/${u._id}`,{method:'PATCH',headers:{Authorization:'Bearer '+CFG.tok,'Content-Type':'application/json'},body:JSON.stringify({fields:{'Chat ID':cid}})});
+      n++;
+    }
+  }
+  await loadUsers();renderUsers();
+  showToast(`✅ ${n} ona ulandi · ${Object.keys(botUsers).length} chat_id saqlangan`);
+}
+
+async function setBotCommands(){
+  if(!CFG.bot){showToast('⚠️ Bot token kerak');return;}
+  const cmds=[{command:'start',description:'Botni boshlash'},{command:'log',description:"Uyqu ma'lumotini kiritish"},{command:'history',description:"So'nggi yozuvlar"},{command:'help',description:'Yordam'}];
+  const r=await fetch(`https://api.telegram.org/bot${CFG.bot}/setMyCommands`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({commands:cmds})});
+  const d=await r.json();showToast(d.ok?'✅ Buyruqlar saqlandi':'❌ '+d.description);
+}
+
+async function botBroadcast(){
+  const text=$('botBcastMsg').value.trim();
+  if(!text){showToast('⚠️ Xabar kiriting');return;}
+  const conn=users.filter(u=>getChatId(u.username)||u.chatId);
+  if(!conn.length){showToast('⚠️ Ulangan ona yo\'q — Import bosing');return;}
+  if(!confirm(`${conn.length} ta onaga yuborilsinmi?`))return;
+  let ok=0,fail=0;
+  for(const u of conn){const c=getChatId(u.username)||u.chatId;if(await tgSend(c,'🌙 *Uyqu Mutaxasisidan:*\n\n'+text))ok++;else fail++;}
+  showToast(`✅ ${ok} ta yuborildi, ❌ ${fail} ta xato`);
+  $('botBcastMsg').value='';
+}
+
+async function broadcastAll(){
+  const text=$('broadcastMsg').value.trim();
+  if(!text){showToast('⚠️ Xabar kiriting');return;}
+  const list=users.filter(u=>u.status==='Faol'&&(getChatId(u.username)||u.chatId));
+  if(!list.length){showToast('⚠️ Ulangan faol ona yo\'q');return;}
+  if(!confirm(`${list.length} ta onaga yuborilsinmi?`))return;
+  let ok=0;for(const u of list){const c=getChatId(u.username)||u.chatId;if(await tgSend(c,'📢 '+text))ok++;}
+  showToast(`✅ ${ok} ta onaga yuborildi`);
+  $('broadcastMsg').value='';
+}
+
+async function quickMsg(chatId,name){
+  const text=prompt(`${name} ga xabar:`,'');if(!text)return;
+  const ok=await tgSend(chatId,text);
+  showToast(ok?'✅ Yuborildi':'❌ Yuborib bo\'lmadi');
+}
+
+function getChatId(username){if(!username)return null;return botUsers[(username||'').replace('@','').toLowerCase()]||null;}
+
+async function tgSend(chatId,text){
+  if(!chatId||!CFG.bot)return false;
+  try{const r=await fetch(`https://api.telegram.org/bot${CFG.bot}/sendMessage`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({chat_id:chatId,text,parse_mode:'Markdown'})});const d=await r.json();return d.ok;}catch(e){return false;}
+}
+
+// ── DASHBOARD ──
+function renderDash(){
+  const today=new Date().toISOString().split('T')[0];
+  const alrts=getAlerts();
+  $('stM').textContent=Math.max(users.length,[...new Set(logs.map(l=>l.mamaName))].length);
+  $('stT').textContent=logs.filter(l=>l.date===today).length;
+  $('stAll').textContent=logs.length;
+  $('stA').textContent=alrts.length;
+  $('alertList').innerHTML=!alrts.length?'<div style="color:var(--green);font-size:13px;padding:6px 0;">✅ Hamma ona yaxshi!</div>':
+    alrts.map(a=>`<div style="display:flex;align-items:center;gap:9px;padding:8px 0;border-bottom:1px solid rgba(45,51,59,.5);">
+      <span style="font-size:17px;">⚠️</span>
+      <div style="flex:1;"><div style="font-size:13px;font-weight:700;">${a.name}</div><div style="font-size:11px;color:var(--muted);">${a.reason}</div></div>
+      <button class="btn btn-sm" onclick="openMsgTo('${a.name}')">💬</button>
+    </div>`).join('');
+  $('recentLogs').innerHTML=logs.slice(0,8).map(logRow).join('')||'<div style="color:var(--muted);font-size:13px;">Yozuv yo\'q</div>';
+  renderWeekChart();
+}
+
+function getAlerts(){
+  const alrts=[],names=[...new Set([...users.map(u=>u.name),...logs.map(l=>l.mamaName)].filter(Boolean))];
+  names.forEach(name=>{
+    const ul=logs.filter(l=>l.mamaName===name);
+    const r7=ul.filter(l=>{const d=new Date(l.date),w=new Date();w.setDate(w.getDate()-7);return d>=w;});
+    if(!r7.length){alrts.push({name,reason:"7 kun ma'lumot yo'q"});return;}
+    const avg=r7.reduce((s,l)=>s+l.hours,0)/r7.length;
+    if(avg<8)alrts.push({name,reason:`O'rtacha ${avg.toFixed(1)}h — normadan kam`});
+    if(r7.filter(l=>l.waking>=4).length>=3)alrts.push({name,reason:'Tez-tez uyg\'onish (4+ marta)'});
+    if(r7.filter(l=>l.mood<=2).length>=3)alrts.push({name,reason:'Ketma-ket yomon uyqu sifati'});
+  });
+  return alrts;
+}
+
+function renderWeekChart(){
+  const days=[],lbls=[];
+  for(let i=6;i>=0;i--){const d=new Date();d.setDate(d.getDate()-i);days.push(d.toISOString().split('T')[0]);lbls.push(d.toLocaleDateString('uz-UZ',{weekday:'short',day:'numeric'}));}
+  const data=days.map(day=>{const l=logs.filter(r=>r.date===day);return l.length?Math.round(l.reduce((s,r)=>s+r.hours,0)/l.length*10)/10:0;});
+  const ctx=$('wChart').getContext('2d');
+  if(wChart)wChart.destroy();
+  wChart=new Chart(ctx,{type:'bar',data:{labels:lbls,datasets:[{data,backgroundColor:data.map(v=>v>=8?'rgba(63,185,80,.75)':v>=6?'rgba(88,166,255,.75)':'rgba(248,81,73,.75)'),borderRadius:6,borderSkipped:false},{data:Array(7).fill(8),type:'line',borderColor:'rgba(210,153,34,.6)',borderWidth:2,borderDash:[4,4],pointRadius:0,fill:false}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#8b949e',font:{size:10}},grid:{color:'rgba(255,255,255,.04)'}},y:{ticks:{color:'#8b949e',font:{size:10}},grid:{color:'rgba(255,255,255,.04)'},min:0,max:14}}}});
+}
+
+// ── SIDEBAR ──
+function renderSidebar(){
+  const list=users.length?users:logs.reduce((a,l)=>{if(!a.find(u=>u.name===l.mamaName))a.push({name:l.mamaName,username:l.mamaPhone});return a;},[]);
+  $('sidebarMamas').innerHTML=list.slice(0,12).map((u,i)=>{
+    const hasT=logs.some(l=>l.date===new Date().toISOString().split('T')[0]&&l.mamaName===u.name);
+    return `<button class="smama" onclick="filterByMama('${u.name}')"><div class="sdot" style="background:${CLR[i%CLR.length]}"></div>${u.name.substring(0,15)}<span style="margin-left:auto;">${hasT?'✅':''}</span></button>`;
+  }).join('');
+}
+
+// ── LOGS ──
+function renderLogs(){
+  const mf=$('fMama').value,tf=$('fType').value;
+  let f=logs;if(mf)f=f.filter(l=>l.mamaName===mf);if(tf)f=f.filter(l=>l.type===tf);
+  const me=['','😭','😟','😐','😊','😴'];
+  $('logsBody').innerHTML=f.map(l=>{
+    const hc=l.hours>=10?'var(--green)':l.hours>=8?'var(--accent)':l.hours>=6?'var(--yellow)':'var(--red)';
+    return `<tr><td>${l.date}</td><td><strong>${l.mamaName}</strong><br><small style="color:var(--muted)">${l.babyName}${l.babyAge?' ('+l.babyAge+'oy)':''}</small></td><td style="font-family:'DM Mono',monospace;">${l.start}–${l.end}</td><td style="font-weight:700;color:${hc}">${l.hours.toFixed(1)}h</td><td>${l.type==='Tungi'?'🌙':'☀️'} ${l.type}</td><td>${me[l.mood]||'😐'}</td><td style="text-align:center">${l.waking}</td><td>${l.symptoms?`<span class="badge b-r">${l.symptoms.split(',')[0]}</span>`:''}</td><td><button class="btn btn-sm" onclick="openMsgTo('${l.mamaName}')">💬</button></td></tr>`;
+  }).join('')||'<tr><td colspan="9" style="text-align:center;color:var(--muted);padding:22px;">Yozuv topilmadi</td></tr>';
+}
+
+function logRow(l){
+  const me=['','😭','😟','😐','😊','😴'];
+  const hc=l.hours>=10?'var(--green)':l.hours>=8?'var(--accent)':l.hours>=6?'var(--yellow)':'var(--red)';
+  return `<div class="lr"><div class="licon">${l.type==='Tungi'?'🌙':'☀️'}</div><div class="linfo"><div class="lmain">${l.mamaName} · ${l.babyName}</div><div class="lsub">${l.date} · ${l.start}–${l.end} · ${me[l.mood]||''} · ${l.waking}x uyg'ongdi${l.symptoms?' · ⚠️'+l.symptoms.split(',')[0]:''}</div></div><div class="lhours" style="color:${hc}">${l.hours.toFixed(1)}h</div><button class="btn btn-sm" onclick="openMsgTo('${l.mamaName}')" style="margin-left:8px;">💬</button></div>`;
+}
+
+// ── SELECTS ──
+function fillSelects(){
+  const names=[...new Set([...users.map(u=>u.name),...logs.map(l=>l.mamaName)].filter(Boolean))];
+  ['fMama','msgTarget'].forEach(id=>{
+    const el=$(id),cur=el.value;
+    el.innerHTML=`<option value="">${id==='fMama'?'Barcha onalar':'-- Ona tanlang --'}</option>`;
+    names.forEach(n=>el.insertAdjacentHTML('beforeend',`<option value="${n}">${n}</option>`));
+    if(cur)el.value=cur;
+  });
+}
+function filterByMama(n){$('fMama').value=n;goPage('logs');renderLogs();}
+
+// ── MESSAGE ──
+const TPLS={
+  ok:(n,b)=>`Assalomu alaykum, ${n}! 👋\n\n${b||'Chaqaloqingiz'}ning uyqu jadvali zo'r ketmoqda! 🌙✨\nShu yo'lda davom eting, siz ajoyib onasiz! 💪`,
+  kam:(n,b)=>`Assalomu alaykum, ${n}!\n\n${b||'Chaqaloqingiz'} normadan kamroq uxlamoqda.\n\n📌 Maslahat:\n• Kechqurun 19-20 da uxlatishni boshlang\n• Xonani qoraytiring, shovqinni kamaytiring\n• Jadvaldan chiqmang`,
+  kop:(n,b)=>`Assalomu alaykum, ${n}!\n\n${b||'Chaqaloqingiz'} normadan ko'proq uxlamoqda.\n\n📌 Kuzating:\n• Ishtahasi bormi?\n• Harorati normal?\n• Faol o'ynaydimi?`,
+  jadval:(n,b)=>`Assalomu alaykum, ${n}!\n\nMuntazamlik — chaqaloq uyqusining kaliti! ⏰\nHar kuni bir xil vaqtda uxlating.\nBir haftadan so'ng sezilarli farq bo'ladi! 💪`,
+  shif:(n,b)=>`Assalomu alaykum, ${n}!\n\n${b||'Chaqaloqda'} uyqu muammolari ko'rinyapti.\n⚠️ Pediatr yoki uyqu mutaxassisiga ko'rsatishni tavsiya qilaman. 🏥\n\nSavollar bo'lsa murojaat qiling!`,
+  uygh:(n,b)=>`Assalomu alaykum, ${n}!\n\n${b||'Chaqaloqingiz'} tungi uyg'onishlari ko'p.\n\n📌 Yosh bo'yicha norma:\n• 0-3 oy: 2-3 marta normal\n• 6-12 oy: 1-2 marta\n• 1 yosh+: 0-1 marta\n\nSababini kuzating (och, ho'l, qo'rqqan?)`
+};
+
+function useTpl(key){
+  const n=$('msgTarget').value||'Onajon';
+  const ul=logs.filter(l=>l.mamaName===n);
+  $('msgText').value=TPLS[key]?.(n,ul[0]?.babyName||'')||'';
+  updatePreview();
+}
+
+function updatePreview(){
+  const text=$('msgText').value,target=$('msgTarget').value;
+  $('msgPreview').textContent=text||'';
+  if(!text)$('msgPreview').innerHTML='<span style="color:var(--muted)">Xabar ko\'rinishi...</span>';
+  if(target)updateMamaStat(target);
+}
+
+function updateMamaStat(name){
+  const ul=logs.filter(l=>l.mamaName===name);
+  const u=users.find(x=>x.name===name);
+  const chatId=getChatId(u?.username||ul[0]?.mamaPhone||'')||u?.chatId||'';
+  const avg=ul.length?(ul.reduce((s,l)=>s+l.hours,0)/ul.length).toFixed(1):'-';
+  $('mamaStat').innerHTML=`
+    <div style="display:flex;flex-direction:column;gap:6px;font-size:13px;">
+      <div><strong>📱 Telegram:</strong> ${u?.username||ul[0]?.mamaPhone||'Yo\'q'}</div>
+      <div><strong>🤖 Chat ID:</strong> ${chatId?`<span class="badge b-p">${chatId} ✅</span>`:'<span class="badge b-gr">/start bossin</span>'}</div>
+      <div><strong>👶 Chaqaloq:</strong> ${u?.babyName||ul[0]?.babyName||'—'}</div>
+      <div><strong>📊 Yozuvlar:</strong> ${ul.length}</div>
+      <div><strong>⏱ O'rtacha:</strong> ${avg}h</div>
+      <div><strong>📅 Oxirgi:</strong> ${ul[0]?.date||'—'}</div>
+    </div>`;
+}
+
+async function sendMsg(){
+  const name=$('msgTarget').value,text=$('msgText').value.trim();
+  if(!name){showToast('⚠️ Ona tanlang');return;}if(!text){showToast('⚠️ Xabar yozing');return;}
+  if(!CFG.bot){showToast('⚠️ Bot token sozlanmagan');return;}
+  const u=users.find(x=>x.name===name);
+  const ul=logs.filter(l=>l.mamaName===name);
+  let chatId=getChatId(u?.username||ul[0]?.mamaPhone||'')||u?.chatId||'';
+  if(!chatId){await fetchUpdates();chatId=getChatId(u?.username||'')||'';}
+  if(!chatId){showToast('⚠️ '+name+' botga /start bosmagan');return;}
+  const ok=await tgSend(chatId,'🌙 *Uyqu Mutaxasisidan:*\n\n'+text);
+  if(ok){showToast('✅ Yuborildi: '+name);saveMH(name,text);renderMsgHist();$('msgText').value='';}
+  else showToast('❌ Yuborib bo\'lmadi');
+}
+
+function openMsgTo(name){goPage('message');$('msgTarget').value=name;updatePreview();}
+function saveMH(to,text){const h=JSON.parse(localStorage.getItem(MHKEY)||'[]');h.unshift({to,text,time:new Date().toISOString()});localStorage.setItem(MHKEY,JSON.stringify(h.slice(0,50)));}
+function renderMsgHist(){
+  const h=JSON.parse(localStorage.getItem(MHKEY)||'[]');
+  $('msgHist').innerHTML=!h.length?'<div style="color:var(--muted);font-size:13px;">Hali xabar yuborilmagan</div>':
+    h.slice(0,10).map(m=>`<div class="lr"><div class="licon">📤</div><div class="linfo"><div class="lmain">${m.to}</div><div class="lsub">${m.text.substring(0,80)}${m.text.length>80?'...':''}</div><div class="lsub">${new Date(m.time).toLocaleString('uz-UZ')}</div></div></div>`).join('');
+}
+
+// ── NAV ──
+function goPage(p){
+  document.querySelectorAll('.page').forEach(el=>el.classList.remove('active'));
+  document.querySelectorAll('.sitem').forEach(el=>el.classList.remove('active'));
+  $('page-'+p).classList.add('active');
+  const idx=PAGES.indexOf(p);
+  if(idx>=0)document.querySelectorAll('.sitem')[idx].classList.add('active');
+  if(p==='users')renderUsers();
+  if(p==='logs')renderLogs();
+  if(p==='message'){fillSelects();renderMsgHist();}
+  if(p==='bot'&&$('navBotBadge').style.display!=='none'){$('navBotBadge').style.display='none';}
+}
+
+function getAge(birth){const m=Math.floor((Date.now()-new Date(birth))/(1e3*60*60*24*30.44));if(m<3)return Math.floor((Date.now()-new Date(birth))/(1e3*60*60*24*7))+' hafta';if(m<24)return m+' oy';return Math.floor(m/12)+'y '+m%12+'oy';}
+</script>
+</body>
+</html>
