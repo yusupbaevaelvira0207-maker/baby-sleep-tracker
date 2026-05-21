@@ -360,12 +360,13 @@ function saveConfig(){
 
 function startAutoRefresh(){
   if(autoTimer)clearInterval(autoTimer);
+  // BUG FIX: 5s emas 30s — API limitni tejash uchun
   autoTimer=setInterval(async()=>{
     await Promise.all([loadUsers(),loadLogs()]);
     renderUsers();renderBotPage();renderSidebar();fillSelects();
     $('lastRef').textContent=new Date().toLocaleTimeString('uz-UZ');
     if($('botLastSync'))$('botLastSync').textContent=new Date().toLocaleTimeString('uz-UZ');
-  },5000);
+  },30000); // 30 soniya
 }
 
 async function loadAll(){
@@ -400,7 +401,7 @@ async function loadUsers(){
   try{
     let recs=[],off='';
     while(true){
-      const d=await atGet(CFG.utbl+(off?'&offset='+off:''));
+      const d=await atGet(CFG.utbl,(off?'&offset='+off:''));
       recs=recs.concat(d.records);
       if(d.offset)off=d.offset; else break;
     }
