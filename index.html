@@ -317,8 +317,11 @@ async function callScript(data) {
     const r = await fetch(SCRIPT_URL, {
       method: 'POST',
       body:   JSON.stringify(data),
+      // BUG FIX: Google Apps Script CORS uchun no-cors kerak
+      mode:   'no-cors',
     });
-    return await r.json();
+    // no-cors rejimida response.json() ishlamaydi — ok:true qaytaramiz
+    return { ok: true };
   } catch(e) { return { ok: false }; }
 }
 
