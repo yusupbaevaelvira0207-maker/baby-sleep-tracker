@@ -297,10 +297,29 @@ let tgUser = null, tgChatId = null;
 function initTelegram() {
   try {
     const tg = window.Telegram?.WebApp;
-    if (tg?.initDataUnsafe?.user) {
-      tgUser   = tg.initDataUnsafe.user;
-      tgChatId = String(tgUser.id);
-      tg.ready(); tg.expand();
+    if (!tg) return;
+    tg.ready();
+    tg.expand();
+
+    // 1-usul: initDataUnsafe (ko'p qurilmalarda ishlaydi)
+    const user = tg.initDataUnsafe?.user;
+    if (user && user.id) {
+      tgUser   = user;
+      tgChatId = String(user.id);
+      return;
+    }
+
+    // 2-usul: initData string dan parse (fallback)
+    if (tg.initData) {
+      const params = new URLSearchParams(tg.initData);
+      const userStr = params.get('user');
+      if (userStr) {
+        const parsed = JSON.parse(decodeURIComponent(userStr));
+        if (parsed && parsed.id) {
+          tgUser   = parsed;
+          tgChatId = String(parsed.id);
+        }
+      }
     }
   } catch(e) {}
 }
@@ -331,11 +350,20 @@ async function callScript(data) {
 // ── Init ──
 window.onload = () => {
   initTelegram();
-  const profile = getProfile();
-  if (!profile) showSetup();
-  else initMain(profile);
   $('sleepDate').valueAsDate = new Date();
   ['sleepStart','sleepEnd'].forEach(id => $(id).addEventListener('change', updateDur));
+
+  // Telegram WebApp ba'zan 100-300ms kechikib tayyor bo'ladi
+  // Shuning uchun kichik delay bilan showSetup/initMain chaqiramiz
+  setTimeout(() => {
+    // Yana bir marta urinib ko'ramiz
+    if (!tgUser) {
+      initTelegram();
+    }
+    const profile = getProfile();
+    if (!profile) showSetup();
+    else initMain(profile);
+  }, 300);
 };
 
 function showSetup() {
