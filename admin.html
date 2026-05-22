@@ -197,6 +197,9 @@ tr:hover td{background:rgba(255,255,255,.02);}
   <div class="topbar">
     <div class="ptitle">📊 Dashboard</div>
     <div class="tactions">
+      <select class="fsel" id="dashUser" onchange="renderDash()" style="width:auto;padding:8px 12px;min-width:200px;">
+        <option value="">📊 Barcha onalar (umumiy)</option>
+      </select>
       <button class="btn" onclick="loadAll()">🔄 Yangilash</button>
       <button class="btn btn-p" onclick="goPage('message')">💬 Xabar yuborish</button>
     </div>
@@ -236,14 +239,6 @@ tr:hover td{background:rgba(255,255,255,.02);}
         <div><div class="sc-label">Bot ulangan</div><div style="font-size:22px;font-weight:700;color:var(--purple)" id="uS3">0</div></div>
       </div>
     </div>
-    <div class="card" style="margin:0;">
-      <div class="ct" style="margin-bottom:10px;">📢 Hammaga xabar</div>
-      <div style="display:flex;gap:8px;">
-        <input class="fi" id="broadcastMsg" placeholder="Xabar matni..." style="flex:1;font-family:'DM Sans',sans-serif;font-size:13px;padding:9px 12px;">
-        <button class="btn btn-p" onclick="broadcastAll()">📤</button>
-      </div>
-      <div style="font-size:11px;color:var(--muted);margin-top:5px;">Bot ulangan faol onalarga</div>
-    </div>
   </div>
   <div style="max-height:calc(100vh - 300px);overflow-y:auto;">
     <div id="usersList"><div class="loading"><div class="spinner"></div><br>Yuklanmoqda...</div></div>
@@ -273,11 +268,6 @@ tr:hover td{background:rgba(255,255,255,.02);}
   <div class="card">
     <div class="ch"><div class="ct">✅ Bot ga ulangan onalar</div><span id="connectedCount" class="badge b-g">0 ta</span></div>
     <div id="connectedList"><div style="color:var(--muted);font-size:13px;">Yuklanmoqda...</div></div>
-  </div>
-  <div class="card">
-    <div class="ch"><div class="ct">📢 Barcha ulangan onalarga xabar</div></div>
-    <textarea class="mta" id="botBcastMsg" placeholder="Xabar matni..." style="margin-bottom:10px;"></textarea>
-    <button class="btn btn-p" onclick="botBroadcast()" style="width:100%;">📤 Barcha ulangan onalarga yuborish</button>
   </div>
 </div>
 
@@ -360,19 +350,19 @@ function saveConfig(){
 
 function startAutoRefresh(){
   if(autoTimer)clearInterval(autoTimer);
-  // BUG FIX: 5s emas 30s — API limitni tejash uchun
+  // 60 sekund — API ni tejash uchun
   autoTimer=setInterval(async()=>{
     await Promise.all([loadUsers(),loadLogs()]);
-    renderUsers();renderBotPage();renderSidebar();fillSelects();
+    fillSelects();renderDash();renderUsers();renderBotPage();renderSidebar();
     $('lastRef').textContent=new Date().toLocaleTimeString('uz-UZ');
     if($('botLastSync'))$('botLastSync').textContent=new Date().toLocaleTimeString('uz-UZ');
-  },30000); // 30 soniya
+  },60000);
 }
 
 async function loadAll(){
   await Promise.all([loadLogs(),loadUsers()]);
   $('lastRef').textContent=new Date().toLocaleTimeString('uz-UZ');
-  renderDash();renderSidebar();renderUsers();renderLogs();fillSelects();renderMsgHist();renderBotPage();
+  fillSelects();renderDash();renderSidebar();renderUsers();renderLogs();renderMsgHist();renderBotPage();
 }
 
 async function atGet(tbl,extra=''){
@@ -529,30 +519,6 @@ async function fetchBotInfo(){
   }catch(e){showToast('❌ '+e.message);}
 }
 
-async function botBroadcast(){
-  const text=$('botBcastMsg').value.trim();
-  if(!text){showToast('⚠️ Xabar kiriting');return;}
-  const conn=users.filter(u=>u.chatId&&u.status==='Faol');
-  if(!conn.length){showToast('⚠️ Ulangan ona yo\'q');return;}
-  if(!confirm(`${conn.length} ta onaga yuborilsinmi?`))return;
-  let ok=0,fail=0;
-  for(const u of conn){if(await tgSend(u.chatId,'🌙 *Uyqu Mutaxasisidan:*\n\n'+text))ok++;else fail++;}
-  showToast(`✅ ${ok} ta, ❌ ${fail} ta`);
-  $('botBcastMsg').value='';
-}
-
-async function broadcastAll(){
-  const text=$('broadcastMsg').value.trim();
-  if(!text){showToast('⚠️ Xabar kiriting');return;}
-  const list=users.filter(u=>u.status==='Faol'&&u.chatId);
-  if(!list.length){showToast('⚠️ Ulangan faol ona yo\'q');return;}
-  if(!confirm(`${list.length} ta onaga yuborilsinmi?`))return;
-  let ok=0;
-  for(const u of list){if(await tgSend(u.chatId,'📢 '+text))ok++;}
-  showToast(`✅ ${ok} ta onaga yuborildi`);
-  $('broadcastMsg').value='';
-}
-
 async function quickMsg(chatId,name){
   const text=prompt(`${name} ga xabar:`,'');
   if(!text)return;
@@ -570,10 +536,13 @@ async function tgSend(chatId,text){
 
 function renderDash(){
   const today=new Date().toISOString().split('T')[0];
-  const alrts=getAlerts();
-  $('stM').textContent=Math.max(users.length,[...new Set(logs.map(l=>l.mamaName))].length);
-  $('stT').textContent=logs.filter(l=>l.date===today).length;
-  $('stAll').textContent=logs.length;
+  const selUser=$('dashUser')?$('dashUser').value:'';
+  const fLogs=selUser?logs.filter(l=>l.mamaName===selUser):logs;
+  const fUsers=selUser?users.filter(u=>u.name===selUser):users;
+  const alrts=getAlerts(selUser);
+  $('stM').textContent=selUser?1:Math.max(users.length,[...new Set(logs.map(l=>l.mamaName))].length);
+  $('stT').textContent=fLogs.filter(l=>l.date===today).length;
+  $('stAll').textContent=fLogs.length;
   $('stA').textContent=alrts.length;
   $('alertList').innerHTML=!alrts.length
     ?'<div style="color:var(--green);font-size:13px;padding:6px 0;">✅ Hamma ona yaxshi!</div>'
@@ -582,12 +551,14 @@ function renderDash(){
         <div style="flex:1;"><div style="font-size:13px;font-weight:700;">${a.name}</div><div style="font-size:11px;color:var(--muted);">${a.reason}</div></div>
         <button class="btn btn-sm" onclick="openMsgTo('${a.name}')">💬</button>
       </div>`).join('');
-  $('recentLogs').innerHTML=logs.slice(0,8).map(logRow).join('')||'<div style="color:var(--muted);font-size:13px;">Yozuv yo\'q</div>';
-  renderWeekChart();
+  $('recentLogs').innerHTML=fLogs.slice(0,8).map(logRow).join('')||'<div style="color:var(--muted);font-size:13px;">Yozuv yo\'q</div>';
+  renderWeekChart(selUser);
 }
 
-function getAlerts(){
-  const alrts=[],names=[...new Set([...users.map(u=>u.name),...logs.map(l=>l.mamaName)].filter(Boolean))];
+function getAlerts(selUser){
+  const alrts=[];
+  let names=[...new Set([...users.map(u=>u.name),...logs.map(l=>l.mamaName)].filter(Boolean))];
+  if(selUser)names=names.filter(n=>n===selUser);
   names.forEach(name=>{
     const ul=logs.filter(l=>l.mamaName===name);
     const r7=ul.filter(l=>{const d=new Date(l.date),w=new Date();w.setDate(w.getDate()-7);return d>=w;});
@@ -600,10 +571,11 @@ function getAlerts(){
   return alrts;
 }
 
-function renderWeekChart(){
+function renderWeekChart(selUser){
   const days=[],lbls=[];
   for(let i=6;i>=0;i--){const d=new Date();d.setDate(d.getDate()-i);days.push(d.toISOString().split('T')[0]);lbls.push(d.toLocaleDateString('uz-UZ',{weekday:'short',day:'numeric'}));}
-  const data=days.map(day=>{const l=logs.filter(r=>r.date===day);return l.length?Math.round(l.reduce((s,r)=>s+r.hours,0)/l.length*10)/10:0;});
+  const src=selUser?logs.filter(l=>l.mamaName===selUser):logs;
+  const data=days.map(day=>{const l=src.filter(r=>r.date===day);return l.length?Math.round(l.reduce((s,r)=>s+r.hours,0)/l.length*10)/10:0;});
   const ctx=$('wChart').getContext('2d');
   if(wChart)wChart.destroy();
   wChart=new Chart(ctx,{type:'bar',data:{labels:lbls,datasets:[{data,backgroundColor:data.map(v=>v>=8?'rgba(63,185,80,.75)':v>=6?'rgba(88,166,255,.75)':'rgba(248,81,73,.75)'),borderRadius:6,borderSkipped:false},{data:Array(7).fill(8),type:'line',borderColor:'rgba(210,153,34,.6)',borderWidth:2,borderDash:[4,4],pointRadius:0,fill:false}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#8b949e',font:{size:10}},grid:{color:'rgba(255,255,255,.04)'}},y:{ticks:{color:'#8b949e',font:{size:10}},grid:{color:'rgba(255,255,255,.04)'},min:0,max:14}}}});
@@ -620,11 +592,48 @@ function renderSidebar(){
 function renderLogs(){
   const mf=$('fMama').value,tf=$('fType').value;
   let f=logs;if(mf)f=f.filter(l=>l.mamaName===mf);if(tf)f=f.filter(l=>l.type===tf);
+
+  // User kesimida guruhlash
+  const groups={};
+  f.forEach(l=>{
+    const k=l.mamaName||'Noma\'lum';
+    if(!groups[k])groups[k]=[];
+    groups[k].push(l);
+  });
+
   const me=['','😭','😟','😐','😊','😴'];
-  $('logsBody').innerHTML=f.map(l=>{
-    const hc=l.hours>=10?'var(--green)':l.hours>=8?'var(--accent)':l.hours>=6?'var(--yellow)':'var(--red)';
-    return `<tr><td>${l.date}</td><td><strong>${l.mamaName}</strong><br><small style="color:var(--muted)">${l.babyName}${l.babyAge?' ('+l.babyAge+'oy)':''}</small></td><td style="font-family:'DM Mono',monospace;">${l.start}–${l.end}</td><td style="font-weight:700;color:${hc}">${l.hours.toFixed(1)}h</td><td>${l.type==='Tungi'?'🌙':'☀️'} ${l.type}</td><td>${me[l.mood]||'😐'}</td><td style="text-align:center">${l.waking}</td><td>${l.symptoms?`<span class="badge b-r">${l.symptoms.split(',')[0]}</span>`:''}</td><td><button class="btn btn-sm" onclick="openMsgTo('${l.mamaName}')">💬</button></td></tr>`;
-  }).join('')||'<tr><td colspan="9" style="text-align:center;color:var(--muted);padding:22px;">Yozuv topilmadi</td></tr>';
+  const body=$('logsBody');
+  if(!Object.keys(groups).length){
+    body.innerHTML='<tr><td colspan="9" style="text-align:center;color:var(--muted);padding:22px;">Yozuv topilmadi</td></tr>';
+    return;
+  }
+
+  body.innerHTML=Object.keys(groups).map((name,gi)=>{
+    const gl=groups[name];
+    const avg=(gl.reduce((s,l)=>s+l.hours,0)/gl.length).toFixed(1);
+    const baby=gl[0]?.babyName||'';
+    const rows=gl.map(l=>{
+      const hc=l.hours>=10?'var(--green)':l.hours>=8?'var(--accent)':l.hours>=6?'var(--yellow)':'var(--red)';
+      return `<tr class="log-child log-g-${gi}" style="display:none;background:var(--surface);"><td>${l.date}</td><td><small style="color:var(--muted)">${l.babyName}${l.babyAge?' ('+l.babyAge+'oy)':''}</small></td><td style="font-family:'DM Mono',monospace;">${l.start}–${l.end}</td><td style="font-weight:700;color:${hc}">${l.hours.toFixed(1)}h</td><td>${l.type==='Tungi'?'🌙':'☀️'} ${l.type}</td><td>${me[l.mood]||'😐'}</td><td style="text-align:center">${l.waking}</td><td>${l.symptoms?`<span class="badge b-r">${l.symptoms.split(',')[0]}</span>`:''}</td><td><button class="btn btn-sm" onclick="openMsgTo('${l.mamaName}')">💬</button></td></tr>`;
+    }).join('');
+    return `<tr class="log-group" onclick="toggleLogGroup(${gi})" style="cursor:pointer;background:rgba(88,166,255,.05);">
+      <td colspan="9" style="padding:11px 14px;">
+        <span id="log-arrow-${gi}" style="display:inline-block;width:14px;transition:transform .2s;">▶</span>
+        <strong>${name}</strong>
+        ${baby?`<small style="color:var(--muted);"> · 👶 ${baby}</small>`:''}
+        <span class="badge b-p" style="margin-left:10px;">${gl.length} yozuv</span>
+        <span class="badge b-g" style="margin-left:6px;">⌀ ${avg}h</span>
+      </td>
+    </tr>${rows}`;
+  }).join('');
+}
+
+function toggleLogGroup(gi){
+  const rows=document.querySelectorAll('.log-g-'+gi);
+  const arrow=document.getElementById('log-arrow-'+gi);
+  const open=rows[0] && rows[0].style.display!=='none';
+  rows.forEach(r=>r.style.display=open?'none':'');
+  if(arrow)arrow.style.transform=open?'rotate(0deg)':'rotate(90deg)';
 }
 
 function logRow(l){
@@ -635,12 +644,24 @@ function logRow(l){
 
 function fillSelects(){
   const names=[...new Set([...users.map(u=>u.name),...logs.map(l=>l.mamaName)].filter(Boolean))];
-  ['fMama','msgTarget'].forEach(id=>{
-    const el=$(id),cur=el.value;
-    el.innerHTML=`<option value="">${id==='fMama'?'Barcha onalar':'-- Ona tanlang --'}</option>`;
-    names.forEach(n=>el.insertAdjacentHTML('beforeend',`<option value="${n}">${n}</option>`));
-    if(cur)el.value=cur;
-  });
+  // fMama (filter)
+  const fm=$('fMama'),fcur=fm.value;
+  fm.innerHTML='<option value="">Barcha onalar</option>';
+  names.forEach(n=>fm.insertAdjacentHTML('beforeend',`<option value="${n}">${n}</option>`));
+  if(fcur)fm.value=fcur;
+  // msgTarget — "Barcha onalarga" birinchi qatorda
+  const mt=$('msgTarget'),mcur=mt.value;
+  mt.innerHTML='<option value="">-- Ona tanlang --</option><option value="__ALL__">📢 Barcha onalarga</option>';
+  names.forEach(n=>mt.insertAdjacentHTML('beforeend',`<option value="${n}">${n}</option>`));
+  if(mcur)mt.value=mcur;
+  // Dashboard user tanlash (#7)
+  const ds=$('dashUser');
+  if(ds){
+    const dcur=ds.value;
+    ds.innerHTML='<option value="">📊 Barcha onalar (umumiy)</option>';
+    names.forEach(n=>ds.insertAdjacentHTML('beforeend',`<option value="${n}">${n}</option>`));
+    if(dcur)ds.value=dcur;
+  }
 }
 function filterByMama(n){$('fMama').value=n;goPage('logs');renderLogs();}
 
@@ -686,10 +707,27 @@ async function sendMsg(){
   if(!name){showToast('⚠️ Ona tanlang');return;}
   if(!text){showToast('⚠️ Xabar yozing');return;}
   if(!CFG.bot){showToast('⚠️ Bot token sozlanmagan');return;}
+
+  // 6. "Barcha onalarga" tanlanganda — barcha ulangan onalarga yuborish
+  if(name==='__ALL__'){
+    const conn=users.filter(u=>u.chatId&&u.status==='Faol');
+    if(!conn.length){showToast('⚠️ Ulangan faol ona yo\'q');return;}
+    if(!confirm(`${conn.length} ta onaga yuborilsinmi?`))return;
+    let ok=0,fail=0;
+    for(const u of conn){
+      if(await tgSend(u.chatId,'👩‍⚕️ *Mutaxassis Elviradan xabar:*\n\n'+text))ok++;else fail++;
+    }
+    showToast(`✅ ${ok} ta, ❌ ${fail} ta`);
+    saveMH('Barcha onalarga ('+ok+' ta)',text);
+    renderMsgHist();
+    $('msgText').value='';
+    return;
+  }
+
   const u=users.find(x=>x.name===name);
   const chatId=u?.chatId||'';
   if(!chatId){showToast('⚠️ '+name+' hali botga ulanmagan');return;}
-  const ok=await tgSend(chatId,'🌙 *Uyqu Mutaxasisidan:*\n\n'+text);
+  const ok=await tgSend(chatId,'👩‍⚕️ *Mutaxassis Elviradan xabar:*\n\n'+text);
   if(ok){showToast('✅ Yuborildi: '+name);saveMH(name,text);renderMsgHist();$('msgText').value='';}
   else showToast('❌ Yuborib bo\'lmadi');
 }
