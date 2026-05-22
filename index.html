@@ -127,8 +127,10 @@ input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(0.4) sepia(1
       <div class="card-title">👩 Siz haqingizda</div>
       <label class="flabel">Ismingiz</label>
       <input class="input-field" id="setupName" placeholder="Malika">
-      <label class="flabel">Telegram username (@ bilan)</label>
-      <input class="input-field" id="setupUsername" placeholder="@username">
+      <label class="flabel">Telefon raqamingiz</label>
+      <input class="input-field" id="setupPhone" placeholder="+998 90 123 45 67" type="tel" inputmode="tel">
+      <label class="flabel">Telegram username</label>
+      <input class="input-field" id="setupUsername" placeholder="@username" readonly style="background:var(--surface);color:var(--muted);">
       <div id="tgIdInfo" style="font-size:12px;font-weight:600;margin-top:-4px;margin-bottom:8px;"></div>
     </div>
     <div class="card">
@@ -256,8 +258,10 @@ input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(0.4) sepia(1
       <div class="card-title">👩 Mening ma'lumotlarim</div>
       <label class="flabel">Ismim</label>
       <input class="input-field" id="profileName">
+      <label class="flabel">Telefon raqamim</label>
+      <input class="input-field" id="profilePhone" type="tel" inputmode="tel">
       <label class="flabel">Telegram username</label>
-      <input class="input-field" id="profileUsername">
+      <input class="input-field" id="profileUsername" readonly style="background:var(--surface);color:var(--muted);">
       <button class="btn-submit" onclick="saveProfile()">💾 Saqlash</button>
     </div>
     <div class="card">
@@ -314,14 +318,12 @@ function saveLocalLog(log){ const l=getLogs(); l.unshift(log); set('v4_logs', l.
 async function callScript(data) {
   if (!SCRIPT_URL || SCRIPT_URL.includes('GOOGLE_APPS_SCRIPT')) return { ok: false };
   try {
-    const r = await fetch(SCRIPT_URL, {
-      method: 'POST',
-      body:   JSON.stringify(data),
-      headers: { 'Content-Type': 'text/plain' },
-      // BUG FIX: Google Apps Script CORS uchun no-cors kerak
-      mode:   'no-cors',
+    await fetch(SCRIPT_URL, {
+      method:  'POST',
+      mode:    'no-cors',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body:    JSON.stringify(data),
     });
-    // no-cors rejimida response.json() ishlamaydi — ok:true qaytaramiz
     return { ok: true };
   } catch(e) { return { ok: false }; }
 }
@@ -340,9 +342,16 @@ function showSetup() {
   $('setupScreen').style.display = 'block';
   if (tgUser) {
     $('setupName').value = (tgUser.first_name||'') + (tgUser.last_name?' '+tgUser.last_name:'');
-    if (tgUser.username) $('setupUsername').value = '@' + tgUser.username;
+    if (tgUser.username) {
+      $('setupUsername').value = '@' + tgUser.username;
+    } else {
+      $('setupUsername').value = '(username yo\'q)';
+    }
     $('tgIdInfo').style.color = 'var(--good)';
-    $('tgIdInfo').textContent = '✅ Telegram ID avtomatik aniqlandi';
+    $('tgIdInfo').textContent = '✅ Telegram ma\'lumotlari avtomatik olindi';
+  } else {
+    $('tgIdInfo').style.color = 'var(--warn)';
+    $('tgIdInfo').textContent = '⚠️ Bu sahifani Telegram botdan oching';
   }
 }
 
@@ -351,16 +360,27 @@ function initMain(profile) {
   $('mainApp').style.display     = 'block';
   $('mamaNameShow').textContent   = profile.name || 'onajon';
   $('profileName').value          = profile.name     || '';
+  $('profilePhone').value         = profile.phone    || '';
   $('profileUsername').value      = profile.username || '';
 
-  // YANGI: har safar chatId ni yangilash
+  // Telegram username ni doim avtomatik to'ldirish
+  if (tgUser && tgUser.username) {
+    const tgUname = '@' + tgUser.username;
+    if (profile.username !== tgUname) {
+      profile.username = tgUname;
+      $('profileUsername').value = tgUname;
+      set('v4_profile', profile);
+    }
+  }
+
+  // Har safar chatId va boshqa ma'lumotlarni yangilash
   if (tgChatId) {
     profile.chatId = tgChatId;
     set('v4_profile', profile);
-    // Script orqali Airtable ga yozish
     callScript({
       action:    'saveUser',
       name:      profile.name,
+      phone:     profile.phone || '',
       username:  profile.username,
       chatId:    tgChatId,
       babyName:  getBabies()[0]?.name || '',
@@ -385,17 +405,18 @@ function renderChatIdBox(profile) {
 // ── Setup ──
 async function saveSetup() {
   const name  = $('setupName').value.trim();
+  const phone = $('setupPhone').value.trim();
   const uname = $('setupUsername').value.trim();
   const bName = $('setupBabyName').value.trim();
   const bBirth= $('setupBabyBirth').value;
-  if (!name||!bName||!bBirth){ showToast('⚠️ Barcha maydonlarni to\'ldiring'); return; }
+  if (!name||!phone||!bName||!bBirth){ showToast('⚠️ Barcha maydonlarni to\'ldiring'); return; }
 
-  const profile = { name, username:uname, chatId:tgChatId||null, id:Date.now().toString() };
+  const profile = { name, phone, username:uname, chatId:tgChatId||null, id:Date.now().toString() };
   set('v4_profile', profile);
   set('v4_babies', [{ id:'b1', name:bName, birth:bBirth }]);
 
   // Script orqali Airtable ga yozish
-  callScript({ action:'saveUser', name, username:uname, chatId:tgChatId||'', babyName:bName });
+  callScript({ action:'saveUser', name, phone, username:uname, chatId:tgChatId||'', babyName:bName });
 
   initMain(profile);
   showToast('✅ Xush kelibsiz!');
@@ -456,7 +477,7 @@ async function saveSleep() {
     symptoms:  selSyms.join(', '),
     note:      $('sleepNote').value.trim(),
     mamaName:  profile?.name     || '',
-    mamaPhone: profile?.username || '',
+    mamaPhone: profile?.phone || profile?.username || '',
     babyName:  baby.name  || '',
     babyAge,
   };
@@ -539,9 +560,19 @@ function renderProfile(){
 function saveProfile(){
   const p=getProfile()||{};
   p.name=$('profileName').value.trim();
+  p.phone=$('profilePhone').value.trim();
   p.username=$('profileUsername').value.trim();
   set('v4_profile',p);
   $('mamaNameShow').textContent=p.name||'onajon';
+  // Airtable ga ham yangilash
+  callScript({
+    action:'saveUser',
+    name:p.name,
+    phone:p.phone,
+    username:p.username,
+    chatId:tgChatId||p.chatId||'',
+    babyName:getBabies()[0]?.name||'',
+  });
   showToast('✅ Saqlandi');
 }
 function exportData(){
