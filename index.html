@@ -368,26 +368,6 @@ window.onload = () => {
 
 function showSetup() {
   $('setupScreen').style.display = 'block';
-  
-  // DEBUG — Telegram dan nima kelayotganini ko'rsatish
-  const tg = window.Telegram?.WebApp;
-  const debugInfo = {
-    'WebApp mavjud': !!tg,
-    'initData uzunligi': tg?.initData?.length || 0,
-    'initDataUnsafe mavjud': !!tg?.initDataUnsafe,
-    'user mavjud': !!tg?.initDataUnsafe?.user,
-    'user.id': tg?.initDataUnsafe?.user?.id || 'YO\'Q',
-    'username': tg?.initDataUnsafe?.user?.username || 'YO\'Q',
-    'tgUser global': !!tgUser,
-    'tgChatId global': tgChatId || 'YO\'Q',
-    'platform': tg?.platform || 'YO\'Q',
-    'version': tg?.version || 'YO\'Q'
-  };
-  const debugHtml = Object.entries(debugInfo)
-    .map(([k,v]) => `<div>${k}: <b>${v}</b></div>`)
-    .join('');
-  $('tgIdInfo').innerHTML = `<div style="background:#fff8e1;border:2px solid #ff9800;border-radius:8px;padding:10px;font-size:11px;font-family:monospace;color:#333;line-height:1.6;">${debugHtml}</div>`;
-  
   if (tgUser) {
     $('setupName').value = (tgUser.first_name||'') + (tgUser.last_name?' '+tgUser.last_name:'');
     if (tgUser.username) {
@@ -395,6 +375,11 @@ function showSetup() {
     } else {
       $('setupUsername').value = '(username yo\'q)';
     }
+    $('tgIdInfo').style.color = 'var(--good)';
+    $('tgIdInfo').textContent = '✅ Telegram ma\'lumotlari avtomatik olindi';
+  } else {
+    $('tgIdInfo').style.color = 'var(--warn)';
+    $('tgIdInfo').textContent = '⚠️ Bu sahifani Telegram botdan oching';
   }
 }
 
