@@ -696,7 +696,9 @@ async function saveSleep() {
   btn.disabled=false;
   btn.textContent= '🌙 Saqlash';
   editingLogId = null;
-  resetForm(); updateHeaderSub();
+  resetForm();
+  autoFillSleepForm(); // Keyingi uyqu vaqtini avtomatik taklif qilish
+  updateHeaderSub();
   if ($('page-history') && $('page-history').classList.contains('active')) renderHistory();
 }
 
