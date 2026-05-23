@@ -701,7 +701,9 @@ async function resetAirtableData(){
     // 7. Lokal ma'lumotlarni yangilash
     logs = [];
     users = [];
-    fillSelects();renderDash();renderUsers();renderLogs();renderBotPage();renderSidebar();
+    // Xabarlar tarixini ham tozalash
+    localStorage.removeItem(MHKEY);
+    fillSelects();renderDash();renderUsers();renderLogs();renderBotPage();renderSidebar();renderMsgHist();
 
     // 8. Yakuniy xabar
     await tgSend(CFG.adminId, `✅ *Barcha ma\'lumotlar tozalandi*\n\nBackup faylni saqlang!`);
