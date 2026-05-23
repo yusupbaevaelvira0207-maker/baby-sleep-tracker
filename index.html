@@ -471,7 +471,7 @@ function refreshBabyTabs() {
   ).join('');
   updateBabyAge();
 }
-function pickBaby(i){ selBaby=i; refreshBabyTabs(); }
+function pickBaby(i){ selBaby=i; refreshBabyTabs(); autoFillSleepForm(); }
 function updateBabyAge(){
   const b=getBabies()[selBaby];
   if (!b?.birth){ $('babyAgeShow').textContent=''; return; }
@@ -497,6 +497,65 @@ function calcHours(s,e){
   let a=sh*60+sm, b=eh*60+em; if(b<=a)b+=1440; return (b-a)/60;
 }
 
+// Yozuvning vaqt diapazonini Date obyekti sifatida qaytaradi
+function getSleepRange(date, start, end) {
+  const [sh,sm] = start.split(':').map(Number);
+  const [eh,em] = end.split(':').map(Number);
+  const startDt = new Date(date + 'T00:00:00');
+  startDt.setHours(sh, sm, 0, 0);
+  const endDt = new Date(startDt);
+  // Agar tugash boshlanishidan kichik yoki teng bo'lsa — keyingi kun
+  if (eh*60+em <= sh*60+sm) {
+    endDt.setDate(endDt.getDate() + 1);
+  }
+  endDt.setHours(eh, em, 0, 0);
+  return { start: startDt, end: endDt };
+}
+
+// Ikki vaqt diapazoni kesishadimi
+function rangesOverlap(a, b) {
+  return a.start < b.end && b.start < a.end;
+}
+
+// Oxirgi yozuvga asoslangan avtomatik vaqt taklifi
+function autoFillSleepForm() {
+  if (editingLogId) return; // tahrirlash rejimida o'zgartirmaymiz
+
+  const baby = getBabies()[selBaby] || getBabies()[0];
+  if (!baby) {
+    $('sleepDate').valueAsDate = new Date();
+    return;
+  }
+
+  const logs = getLogs()
+    .filter(l => l.babyName === baby.name)
+    .sort((a,b) => {
+      const ra = getSleepRange(a.date, a.start, a.end);
+      const rb = getSleepRange(b.date, b.start, b.end);
+      return rb.end - ra.end;
+    });
+
+  if (!logs.length) {
+    $('sleepDate').valueAsDate = new Date();
+    return;
+  }
+
+  const last = logs[0];
+  const lastRange = getSleepRange(last.date, last.start, last.end);
+  const newStart = lastRange.end;
+
+  const yyyy = newStart.getFullYear();
+  const mm   = String(newStart.getMonth()+1).padStart(2,'0');
+  const dd   = String(newStart.getDate()).padStart(2,'0');
+  const hh   = String(newStart.getHours()).padStart(2,'0');
+  const mn   = String(newStart.getMinutes()).padStart(2,'0');
+
+  $('sleepDate').value  = `${yyyy}-${mm}-${dd}`;
+  $('sleepStart').value = `${hh}:${mn}`;
+  $('sleepEnd').value   = '';
+  updateDur();
+}
+
 // ── Save sleep ──
 // Hozir tahrirlanayotgan yozuv id si (yangi yozuv bo'lsa null)
 let editingLogId = null;
@@ -511,19 +570,29 @@ async function saveSleep() {
   const baby    = getBabies()[selBaby] || getBabies()[0] || {};
   const babyAge = baby.birth ? Math.floor((Date.now()-new Date(baby.birth))/(1e3*60*60*24*30.44)) : null;
 
-  // DUBLIKAT TEKSHIRUVI — faqat yangi yozuv qo'shilayotganda
+  // DIAPAZON VA DUBLIKAT TEKSHIRUVI — faqat yangi yozuv qo'shilayotganda
   if (!editingLogId) {
-    const existingLogs = getLogs();
-    const dup = existingLogs.find(l =>
-      l.date === date &&
-      l.start === start &&
-      l.babyName === (baby.name || '')
-    );
-    if (dup) {
-      showToast('⚠️ Bu vaqtga uyqu kiritilgan! Tarix bo\'limidan tahrirlang');
-      // 2 soniyadan keyin Tarix sahifasiga o'tkazamiz
-      setTimeout(() => goPage('history'), 2000);
-      return;
+    const existingLogs = getLogs().filter(l => l.babyName === (baby.name || ''));
+
+    // Yangi yozuvning vaqt diapazoni (daqiqalarda, sana bilan birga)
+    const newRange = getSleepRange(date, start, end);
+
+    for (const l of existingLogs) {
+      const oldRange = getSleepRange(l.date, l.start, l.end);
+
+      // Aynan dublikat (bir xil boshlanish vaqti)
+      if (l.date === date && l.start === start) {
+        showToast('⚠️ Bu vaqtga uyqu kiritilgan! Tarix bo\'limidan tahrirlang');
+        setTimeout(() => showPage('history'), 2000);
+        return;
+      }
+
+      // Diapazon kesishadimi
+      if (rangesOverlap(newRange, oldRange)) {
+        showToast(`⚠️ ${l.date} ${l.start}–${l.end} oraliqqa tushyapti! Tarix bo'limidan tahrirlang`);
+        setTimeout(() => showPage('history'), 2500);
+        return;
+      }
     }
   }
 
@@ -588,7 +657,7 @@ function editLog(id) {
   document.querySelectorAll('.sym-btn').forEach(b => b.classList.toggle('active', selSyms.includes(b.dataset.sym || b.textContent.trim())));
   $('submitBtn').textContent = '✏️ Tahrirlash';
   updateDur();
-  goPage('home');
+  showPage('input');
   showToast('✏️ Tahrirlash rejimi');
 }
 
@@ -723,7 +792,7 @@ function showPage(p){
   if(p==='history') renderHistory();
   if(p==='babies')  renderBabies();
   if(p==='profile') renderProfile();
-  if(p==='input')   refreshBabyTabs();
+  if(p==='input')   { refreshBabyTabs(); autoFillSleepForm(); }
 }
 
 function showToast(msg){
