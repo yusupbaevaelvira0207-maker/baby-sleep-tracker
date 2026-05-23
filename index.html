@@ -330,7 +330,19 @@ const set = (k,v)  => localStorage.setItem(k, JSON.stringify(v));
 const $   = id     => document.getElementById(id);
 const getProfile = () => get('v4_profile', null);
 const getBabies  = () => get('v4_babies',  []);
-const getLogs    = () => get('v4_logs',    []);
+const getLogs    = () => {
+  const arr = get('v4_logs', []);
+  // Eski yozuvlarga ID qo'shish (migration)
+  let changed = false;
+  arr.forEach((l, i) => {
+    if (!l.id) {
+      l.id = 'log_' + (Date.now() - i*1000);
+      changed = true;
+    }
+  });
+  if (changed) set('v4_logs', arr);
+  return arr;
+};
 function saveLocalLog(log){ const l=getLogs(); l.unshift(log); set('v4_logs', l.slice(0,300)); }
 
 // ── Google Script ga so'rov ──
@@ -486,6 +498,9 @@ function calcHours(s,e){
 }
 
 // ── Save sleep ──
+// Hozir tahrirlanayotgan yozuv id si (yangi yozuv bo'lsa null)
+let editingLogId = null;
+
 async function saveSleep() {
   const date=$('sleepDate').value, start=$('sleepStart').value, end=$('sleepEnd').value;
   if (!date||!start||!end){ showToast('⚠️ Sana va vaqtni to\'ldiring'); return; }
@@ -496,7 +511,24 @@ async function saveSleep() {
   const baby    = getBabies()[selBaby] || getBabies()[0] || {};
   const babyAge = baby.birth ? Math.floor((Date.now()-new Date(baby.birth))/(1e3*60*60*24*30.44)) : null;
 
+  // DUBLIKAT TEKSHIRUVI — faqat yangi yozuv qo'shilayotganda
+  if (!editingLogId) {
+    const existingLogs = getLogs();
+    const dup = existingLogs.find(l =>
+      l.date === date &&
+      l.start === start &&
+      l.babyName === (baby.name || '')
+    );
+    if (dup) {
+      showToast('⚠️ Bu vaqtga uyqu kiritilgan! Tarix bo\'limidan tahrirlang');
+      // 2 soniyadan keyin Tarix sahifasiga o'tkazamiz
+      setTimeout(() => goPage('history'), 2000);
+      return;
+    }
+  }
+
   const log = {
+    id:        editingLogId || ('log_' + Date.now()),
     date, start, end,
     hours:     Math.round(hours*100)/100,
     type:      selType,
@@ -512,14 +544,64 @@ async function saveSleep() {
 
   const btn=$('submitBtn');
   btn.disabled=true; btn.textContent='⏳ Saqlanmoqda...';
-  saveLocalLog(log);
 
-  // Google Script orqali Airtable ga yozish (token ko'rinmaydi!)
+  // Lokal: yangi yoki tahrirlangan
+  const all = getLogs();
+  if (editingLogId) {
+    const idx = all.findIndex(l => l.id === editingLogId);
+    if (idx >= 0) all[idx] = log;
+    set('v4_logs', all);
+  } else {
+    saveLocalLog(log);
+  }
+
+  // Google Script orqali Airtable ga yozish
   const res = await callScript({ action:'saveSleep', ...log });
-  showToast(res.ok ? `✅ Saqlandi! ${hours.toFixed(1)} soat 🌙` : `✅ Lokal saqlandi`);
+  showToast(res.ok ? (editingLogId ? '✅ Tahrirlandi!' : `✅ Saqlandi! ${hours.toFixed(1)} soat 🌙`) : `✅ Lokal saqlandi`);
 
-  btn.disabled=false; btn.textContent='🌙 Saqlash';
+  btn.disabled=false;
+  btn.textContent= '🌙 Saqlash';
+  editingLogId = null;
   resetForm(); updateHeaderSub();
+  if ($('page-history') && $('page-history').classList.contains('active')) renderHistory();
+}
+
+// Yozuvni tahrirlashga olib o'tish
+function editLog(id) {
+  const log = getLogs().find(l => l.id === id);
+  if (!log) { showToast('⚠️ Yozuv topilmadi'); return; }
+  editingLogId = id;
+  $('sleepDate').value  = log.date;
+  $('sleepStart').value = log.start;
+  $('sleepEnd').value   = log.end;
+  $('sleepNote').value  = log.note || '';
+  selType = log.type;
+  selMood = log.mood;
+  wakingCnt = log.waking || 0;
+  selSyms = (log.symptoms || '').split(', ').filter(Boolean);
+  $('wakingVal').textContent = wakingCnt;
+  // type buttons
+  document.querySelectorAll('.type-btn').forEach(b => b.classList.toggle('active', b.dataset.type === selType));
+  // mood buttons
+  document.querySelectorAll('.emoji-btn').forEach((b,i) => b.classList.toggle('active', i === selMood-1));
+  // symptoms
+  document.querySelectorAll('.sym-btn').forEach(b => b.classList.toggle('active', selSyms.includes(b.dataset.sym || b.textContent.trim())));
+  $('submitBtn').textContent = '✏️ Tahrirlash';
+  updateDur();
+  goPage('home');
+  showToast('✏️ Tahrirlash rejimi');
+}
+
+// Yozuvni o'chirish
+async function deleteLog(id) {
+  if (!confirm('Bu yozuvni o\'chirmoqchimisiz?')) return;
+  const all = getLogs().filter(l => l.id !== id);
+  set('v4_logs', all);
+  // Airtable dan ham o'chirish — agar id Airtable id si bo'lsa
+  callScript({ action: 'deleteSleep', logId: id });
+  showToast('🗑 O\'chirildi');
+  renderHistory();
+  updateHeaderSub();
 }
 
 function resetForm(){
@@ -528,6 +610,8 @@ function resetForm(){
   selMood=3; document.querySelectorAll('.emoji-btn').forEach((b,i)=>b.classList.toggle('active',i===2));
   $('durPreview').textContent='⏱ Vaqt kiriting';
   $('sleepDate').valueAsDate=new Date();
+  editingLogId = null;
+  $('submitBtn').textContent = '🌙 Saqlash';
 }
 
 // ── History ──
@@ -547,6 +631,7 @@ function renderHistory(){
     const hh=Math.floor(l.hours), mm=Math.round((l.hours-hh)*60);
     const col=l.hours>=10?'var(--good)':l.hours>=8?'var(--accent)':'var(--warn)';
     const d=new Date(l.date), ds=d.toLocaleDateString('uz-UZ',{weekday:'short',month:'short',day:'numeric'});
+    const id = l.id || '';
     return `<div class="hist-item">
       <div class="hist-icon">${l.type==='Tungi'?'🌙':'☀️'}</div>
       <div class="hist-info">
@@ -555,7 +640,13 @@ function renderHistory(){
         ${l.symptoms?`<div class="hist-sub">⚠️ ${l.symptoms}</div>`:''}
         ${l.note?`<div class="hist-sub">💬 ${l.note}</div>`:''}
       </div>
-      <div class="hist-hours" style="color:${col}">${hh}h${mm?mm+'m':''}</div>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
+        <div class="hist-hours" style="color:${col}">${hh}h${mm?mm+'m':''}</div>
+        ${id ? `<div style="display:flex;gap:4px;">
+          <button onclick="editLog('${id}')" style="background:var(--surface);border:1px solid var(--accent);color:var(--accent);padding:4px 8px;border-radius:8px;font-size:11px;cursor:pointer;font-weight:600;">✏️</button>
+          <button onclick="deleteLog('${id}')" style="background:var(--surface);border:1px solid var(--warn);color:var(--warn);padding:4px 8px;border-radius:8px;font-size:11px;cursor:pointer;font-weight:600;">🗑</button>
+        </div>` : ''}
+      </div>
     </div>`;
   }).join('');
 }
