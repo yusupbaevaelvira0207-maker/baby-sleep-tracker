@@ -236,12 +236,13 @@ input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(0.4) sepia(1
       <div id="babiesList"></div>
     </div>
     <div class="card">
-      <div class="card-title">➕ Yangi chaqaloq</div>
+      <div class="card-title" id="babyFormTitle">➕ Yangi chaqaloq</div>
       <label class="flabel">Ismi</label>
       <input class="input-field" id="newBabyName" placeholder="Ismi">
       <label class="flabel">Tug'ilgan sana</label>
       <input type="date" class="input-field" id="newBabyBirth" style="font-family:'Quicksand',sans-serif;">
-      <button class="btn-submit" onclick="addBaby()">➕ Qo'shish</button>
+      <button class="btn-submit" id="addBabyBtn" onclick="addBaby()">➕ Qo'shish</button>
+      <button class="btn-submit" id="cancelEditBabyBtn" onclick="cancelEditBaby()" style="display:none;background:var(--surface);color:var(--muted);margin-top:8px;">✖ Bekor qilish</button>
     </div>
   </div>
 
@@ -790,18 +791,87 @@ function renderHistory(){
 function renderBabies(){
   const babies=getBabies(), el=$('babiesList');
   el.innerHTML=!babies.length?'<div style="color:var(--muted);font-size:13px;">Chaqaloq yo\'q</div>':
-    babies.map(b=>{
+    babies.map((b,i)=>{
       const mo=b.birth?Math.floor((Date.now()-new Date(b.birth))/(1e3*60*60*24*30.44)):null;
       const age=mo!==null?(mo<3?Math.floor((Date.now()-new Date(b.birth))/(1e3*60*60*24*7))+' hafta':mo+' oy'):'';
-      return `<div class="baby-card"><div style="font-size:30px;">👶</div><div><div style="font-size:15px;font-weight:800;">${b.name}</div>${age?`<div style="font-size:12px;color:var(--muted);font-weight:600;">${age}</div>`:''}</div></div>`;
+      return `<div class="baby-card" style="position:relative;">
+        <div style="font-size:30px;">👶</div>
+        <div style="flex:1;">
+          <div style="font-size:15px;font-weight:800;">${b.name}</div>
+          ${age?`<div style="font-size:12px;color:var(--muted);font-weight:600;">${age}</div>`:''}
+          ${b.birth?`<div style="font-size:11px;color:var(--muted);">📅 ${b.birth}</div>`:''}
+        </div>
+        <div style="display:flex;gap:6px;">
+          <button onclick="editBaby(${i})" style="background:var(--surface);border:1px solid var(--accent);color:var(--accent);padding:6px 10px;border-radius:8px;font-size:13px;cursor:pointer;font-weight:600;">✏️</button>
+          <button onclick="deleteBaby(${i})" style="background:var(--surface);border:1px solid var(--warn);color:var(--warn);padding:6px 10px;border-radius:8px;font-size:13px;cursor:pointer;font-weight:600;">🗑</button>
+        </div>
+      </div>`;
     }).join('');
 }
+
 function addBaby(){
   const name=$('newBabyName').value.trim(), birth=$('newBabyBirth').value;
   if(!name||!birth){showToast('⚠️ Ism va sanani kiriting');return;}
-  const babies=getBabies(); babies.push({id:'b'+Date.now(),name,birth});
-  set('v4_babies',babies); $('newBabyName').value=''; $('newBabyBirth').value='';
-  showToast('✅ Qo\'shildi: '+name); renderBabies(); refreshBabyTabs();
+  const babies=getBabies();
+
+  // Tahrirlash rejimi
+  if (editingBabyIdx !== null && editingBabyIdx >= 0) {
+    babies[editingBabyIdx] = { ...babies[editingBabyIdx], name, birth };
+    set('v4_babies', babies);
+    editingBabyIdx = null;
+    $('newBabyName').value=''; $('newBabyBirth').value='';
+    $('addBabyBtn').textContent = '➕ Qo\'shish';
+    $('cancelEditBabyBtn').style.display = 'none';
+    showToast('✅ Tahrirlandi: '+name);
+  } else {
+    // Yangi qo'shish
+    babies.push({id:'b'+Date.now(), name, birth});
+    set('v4_babies', babies);
+    $('newBabyName').value=''; $('newBabyBirth').value='';
+    showToast('✅ Qo\'shildi: '+name);
+  }
+
+  renderBabies();
+  refreshBabyTabs();
+}
+
+let editingBabyIdx = null;
+
+function editBaby(idx) {
+  const babies = getBabies();
+  const b = babies[idx];
+  if (!b) return;
+  editingBabyIdx = idx;
+  $('newBabyName').value = b.name;
+  $('newBabyBirth').value = b.birth || '';
+  $('addBabyBtn').textContent = '💾 Saqlash';
+  $('cancelEditBabyBtn').style.display = 'inline-block';
+  $('newBabyName').focus();
+  // formaga scroll
+  $('newBabyName').scrollIntoView({ behavior: 'smooth', block: 'center' });
+  showToast('✏️ Tahrirlash rejimi');
+}
+
+function cancelEditBaby() {
+  editingBabyIdx = null;
+  $('newBabyName').value = '';
+  $('newBabyBirth').value = '';
+  $('addBabyBtn').textContent = '➕ Qo\'shish';
+  $('cancelEditBabyBtn').style.display = 'none';
+}
+
+function deleteBaby(idx) {
+  const babies = getBabies();
+  const b = babies[idx];
+  if (!b) return;
+  if (!confirm(`${b.name} chaqaloqni o'chirmoqchimisiz?\n\n(Uning uyqu yozuvlari saqlanadi)`)) return;
+  babies.splice(idx, 1);
+  set('v4_babies', babies);
+  // Agar tanlangan baby o'chirilgan bo'lsa — birinchisiga o'tkazamiz
+  if (selBaby >= babies.length) selBaby = Math.max(0, babies.length - 1);
+  renderBabies();
+  refreshBabyTabs();
+  showToast('🗑 O\'chirildi');
 }
 
 // ── Profile ──
