@@ -359,6 +359,29 @@ async function callScript(data) {
   } catch(e) { return { ok: false }; }
 }
 
+// Airtable da foydalanuvchi bor-yo'qligini tekshirish (GET — javob o'qish mumkin)
+async function checkUserOnServer(chatId, username) {
+  if (!SCRIPT_URL || SCRIPT_URL.includes('GOOGLE_APPS_SCRIPT')) return { ok: false };
+  try {
+    const params = new URLSearchParams({
+      action:   'checkUser',
+      chatId:   chatId || '',
+      username: username || '',
+    });
+    const r = await fetch(SCRIPT_URL + '?' + params.toString());
+    return await r.json();
+  } catch(e) {
+    return { ok: false };
+  }
+}
+
+// Lokal ma'lumotlarni tozalash (admin "OCHIR" qilgandan keyin avtomatik)
+function wipeLocalData() {
+  localStorage.removeItem('v4_profile');
+  localStorage.removeItem('v4_babies');
+  localStorage.removeItem('v4_logs');
+}
+
 // ── Init ──
 window.onload = () => {
   initTelegram();
@@ -366,13 +389,29 @@ window.onload = () => {
   ['sleepStart','sleepEnd'].forEach(id => $(id).addEventListener('change', updateDur));
 
   // Telegram WebApp ba'zan 100-300ms kechikib tayyor bo'ladi
-  // Shuning uchun kichik delay bilan showSetup/initMain chaqiramiz
-  setTimeout(() => {
-    // Yana bir marta urinib ko'ramiz
+  setTimeout(async () => {
     if (!tgUser) {
       initTelegram();
     }
     const profile = getProfile();
+
+    // Agar lokal profil bor — server'da ham borligini tekshiramiz
+    // Agar admin "OCHIR" qilgan bo'lsa — server'da yo'q, lokal tozalanadi
+    if (profile && (tgChatId || profile.username)) {
+      try {
+        const check = await checkUserOnServer(tgChatId || profile.chatId, profile.username);
+        if (check && check.ok && check.exists === false) {
+          // Foydalanuvchi server'da yo'q — admin tozalagan
+          wipeLocalData();
+          showToast('ℹ️ Ma\'lumotlar yangilandi — qaytadan ro\'yxatdan o\'ting');
+          showSetup();
+          return;
+        }
+      } catch(e) {
+        // Server ishlamasa — lokal ishlatamiz, hech narsa o'chirmaymiz
+      }
+    }
+
     if (!profile) showSetup();
     else initMain(profile);
   }, 300);
