@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Admin — Uyqu Mutaxassisi</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap');
 :root{--bg:#0d1117;--surface:#161b22;--card:#1c2128;--border:#2d333b;--accent:#58a6ff;--green:#3fb950;--yellow:#d29922;--red:#f85149;--purple:#bc8cff;--orange:#ffa657;--text:#e6edf3;--muted:#8b949e;}
@@ -133,6 +134,9 @@ tr:hover td{background:rgba(255,255,255,.02);}
     <input class="fi" id="cfgBase" placeholder="appXXXXXXXXXXXXXX">
     <label class="fl">Telegram Bot Token</label>
     <input class="fi" id="cfgBot" placeholder="1234567890:AAXXXXXXXXXX">
+    <label class="fl">Mutaxassis Telegram Chat ID</label>
+    <input class="fi" id="cfgAdminId" placeholder="100000000">
+    <div class="fhint">→ @userinfobot ga /start yuboring va o'z ID ingizni oling</div>
     <label class="fl">SleepLogs jadval nomi</label>
     <input class="fi" id="cfgTbl" value="SleepLogs">
     <label class="fl">Users jadval nomi</label>
@@ -269,6 +273,18 @@ tr:hover td{background:rgba(255,255,255,.02);}
     <div class="ch"><div class="ct">✅ Bot ga ulangan onalar</div><span id="connectedCount" class="badge b-g">0 ta</span></div>
     <div id="connectedList"><div style="color:var(--muted);font-size:13px;">Yuklanmoqda...</div></div>
   </div>
+
+  <div class="card" style="border:2px solid var(--red);background:rgba(248,81,73,.05);">
+    <div class="ch"><div class="ct" style="color:var(--red);">⚠️ Xavfli zona</div></div>
+    <div style="font-size:13px;color:var(--muted);margin-bottom:12px;line-height:1.6;">
+      Quyidagi tugma <b>barcha foydalanuvchilar va uyqu yozuvlarini</b> Airtable dan o'chiradi.
+      Avval Excel formatda <b>backup</b> olinadi va Telegram orqali <b>shaxsiy chatingizga</b> yuboriladi.<br>
+      <b style="color:var(--red);">Bu amal qaytarib bo'lmaydi!</b>
+    </div>
+    <button class="btn" onclick="resetAirtableData()" style="background:var(--red);color:#fff;border-color:var(--red);font-weight:700;">
+      🗑 Backup olib, butun istoriyani o'chirish
+    </button>
+  </div>
 </div>
 
 <!-- LOGS -->
@@ -336,12 +352,30 @@ const closeOv=id=>{$(id).style.display='none';};
 
 window.onload=()=>{
   const s=localStorage.getItem('adm_cfg_v5');
-  if(s){CFG=JSON.parse(s);$('cfgModal').style.display='none';loadAll();startAutoRefresh();}
+  if(s){
+    CFG=JSON.parse(s);
+    $('cfgModal').style.display='none';
+    // Eski sozlamalardagi qiymatlarni inputlarga qaytarish (qayta ochilganda)
+    if(CFG.tok)      $('cfgTok').value=CFG.tok;
+    if(CFG.base)     $('cfgBase').value=CFG.base;
+    if(CFG.bot)      $('cfgBot').value=CFG.bot;
+    if(CFG.adminId)  $('cfgAdminId').value=CFG.adminId;
+    if(CFG.tbl)      $('cfgTbl').value=CFG.tbl;
+    if(CFG.utbl)     $('cfgUTbl').value=CFG.utbl;
+    loadAll();startAutoRefresh();
+  }
   renderMsgHist();
 };
 
 function saveConfig(){
-  CFG={tok:$('cfgTok').value.trim(),base:$('cfgBase').value.trim(),bot:$('cfgBot').value.trim(),tbl:$('cfgTbl').value.trim()||'SleepLogs',utbl:$('cfgUTbl').value.trim()||'Users'};
+  CFG={
+    tok:     $('cfgTok').value.trim(),
+    base:    $('cfgBase').value.trim(),
+    bot:     $('cfgBot').value.trim(),
+    adminId: $('cfgAdminId').value.trim(),
+    tbl:     $('cfgTbl').value.trim()||'SleepLogs',
+    utbl:    $('cfgUTbl').value.trim()||'Users'
+  };
   if(!CFG.tok||!CFG.base){showToast('⚠️ Token va Base ID kerak!');return;}
   localStorage.setItem('adm_cfg_v5',JSON.stringify(CFG));
   $('cfgModal').style.display='none';
@@ -532,6 +566,151 @@ async function tgSend(chatId,text){
     const r=await fetch(`https://api.telegram.org/bot${CFG.bot}/sendMessage`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({chat_id:chatId,text,parse_mode:'Markdown'})});
     const d=await r.json();return d.ok;
   }catch(e){return false;}
+}
+
+// Faylni Telegram orqali yuborish (sendDocument)
+async function tgSendDocument(chatId, fileBlob, filename, caption){
+  if(!chatId||!CFG.bot) return false;
+  try{
+    const fd = new FormData();
+    fd.append('chat_id', chatId);
+    fd.append('document', fileBlob, filename);
+    if(caption) fd.append('caption', caption);
+    const r = await fetch(`https://api.telegram.org/bot${CFG.bot}/sendDocument`, { method:'POST', body: fd });
+    const d = await r.json();
+    return d.ok;
+  }catch(e){
+    console.error('tgSendDocument error', e);
+    return false;
+  }
+}
+
+// Airtable jadvalining barcha yozuvlarini olish (offset orqali)
+async function fetchAllRecords(tableName){
+  const all = [];
+  let offset = '';
+  do {
+    const url = `https://api.airtable.com/v0/${CFG.base}/${encodeURIComponent(tableName)}?pageSize=100${offset?'&offset='+offset:''}`;
+    const r = await fetch(url, { headers:{ Authorization:'Bearer '+CFG.tok } });
+    const d = await r.json();
+    if(d.records) all.push(...d.records);
+    offset = d.offset || '';
+  } while(offset);
+  return all;
+}
+
+// Airtable jadvalidagi yozuvlarni batch o'chirish (10 tadan)
+async function deleteAllRecords(tableName, records){
+  const ids = records.map(r => r.id);
+  for(let i=0; i<ids.length; i+=10){
+    const batch = ids.slice(i, i+10);
+    const params = batch.map(id => 'records[]='+id).join('&');
+    const url = `https://api.airtable.com/v0/${CFG.base}/${encodeURIComponent(tableName)}?${params}`;
+    await fetch(url, { method:'DELETE', headers:{ Authorization:'Bearer '+CFG.tok } });
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// XAVFLI: BACKUP + BUTUN ISTORIYANI O'CHIRISH
+// ═══════════════════════════════════════════════════════════════
+async function resetAirtableData(){
+  if(!CFG.adminId){
+    showToast('⚠️ Avval sozlamalarda Mutaxassis Chat ID ni kiriting!');
+    return;
+  }
+  if(!CFG.bot){
+    showToast('⚠️ Bot token sozlanmagan!');
+    return;
+  }
+
+  // 1-tasdiq
+  if(!confirm('⚠️ DIQQAT!\n\nBarcha foydalanuvchilar va uyqu yozuvlari O\'CHIRILADI.\n\nAvval backup Excel formatda olinadi va Telegram orqali Sizga yuboriladi.\n\nDavom etilsinmi?')){
+    return;
+  }
+
+  // 2-tasdiq — yana bir marta
+  const confirmText = prompt('Tasdiqlash uchun "OCHIR" so\'zini yozing:');
+  if(confirmText !== 'OCHIR'){
+    showToast('❌ Bekor qilindi');
+    return;
+  }
+
+  showToast('⏳ Backup yaratilmoqda...');
+
+  try {
+    // 1. Barcha ma'lumotlarni Airtable dan yuklab olish
+    const [usersData, logsData] = await Promise.all([
+      fetchAllRecords(CFG.utbl),
+      fetchAllRecords(CFG.tbl)
+    ]);
+
+    // 2. Excel fayl yaratish
+    const wb = XLSX.utils.book_new();
+
+    // Sheet 1: Users
+    const usersRows = usersData.map(r => r.fields || {});
+    const usersWS = XLSX.utils.json_to_sheet(usersRows);
+    XLSX.utils.book_append_sheet(wb, usersWS, 'Foydalanuvchilar');
+
+    // Sheet 2: SleepLogs
+    const logsRows = logsData.map(r => r.fields || {});
+    const logsWS = XLSX.utils.json_to_sheet(logsRows);
+    XLSX.utils.book_append_sheet(wb, logsWS, 'Uyqu yozuvlari');
+
+    // 3. Faylni Blob ga aylantirish
+    const wbout = XLSX.write(wb, { bookType:'xlsx', type:'array' });
+    const blob = new Blob([wbout], { type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+
+    // 4. Fayl nomi
+    const now = new Date();
+    const yyyy = now.getFullYear();
+    const mm   = String(now.getMonth()+1).padStart(2,'0');
+    const dd   = String(now.getDate()).padStart(2,'0');
+    const hh   = String(now.getHours()).padStart(2,'0');
+    const mn   = String(now.getMinutes()).padStart(2,'0');
+    const fname = `backup_${yyyy}-${mm}-${dd}_${hh}-${mn}.xlsx`;
+
+    showToast('📤 Telegramga yuborilmoqda...');
+
+    // 5. Faylni avval Telegramga yuborish
+    const caption = `📁 *Backup* — ${dd}.${mm}.${yyyy} ${hh}:${mn}\n\n` +
+                    `👥 Foydalanuvchilar: ${usersData.length}\n` +
+                    `📋 Uyqu yozuvlari: ${logsData.length}`;
+    const sent = await tgSendDocument(CFG.adminId, blob, fname, caption);
+
+    if(!sent){
+      // Telegram yuborish ishlamasa — brauzerga yuklash imkonini berib, jarayonni to'xtatish
+      showToast('❌ Telegramga yuborib bo\'lmadi! Brauzerdan yuklab oling');
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = fname;
+      a.click();
+      return;
+    }
+
+    showToast('✅ Backup yuborildi! O\'chirilmoqda...');
+
+    // 6. Faqat backup muvaffaqiyatli yuborilsa — o'chirish
+    if(logsData.length){
+      await deleteAllRecords(CFG.tbl, logsData);
+    }
+    if(usersData.length){
+      await deleteAllRecords(CFG.utbl, usersData);
+    }
+
+    // 7. Lokal ma'lumotlarni yangilash
+    logs = [];
+    users = [];
+    fillSelects();renderDash();renderUsers();renderLogs();renderBotPage();renderSidebar();
+
+    // 8. Yakuniy xabar
+    await tgSend(CFG.adminId, `✅ *Barcha ma\'lumotlar tozalandi*\n\nBackup faylni saqlang!`);
+    showToast(`✅ ${usersData.length} ona, ${logsData.length} yozuv o\'chirildi`);
+
+  } catch(err) {
+    console.error('reset error', err);
+    showToast('❌ Xatolik: ' + err.message);
+  }
 }
 
 function renderDash(){
