@@ -281,8 +281,19 @@ tr:hover td{background:rgba(255,255,255,.02);}
       Avval Excel formatda <b>backup</b> olinadi va Telegram orqali <b>shaxsiy chatingizga</b> yuboriladi.<br>
       <b style="color:var(--red);">Bu amal qaytarib bo'lmaydi!</b>
     </div>
-    <button class="btn" onclick="resetAirtableData()" style="background:var(--red);color:#fff;border-color:var(--red);font-weight:700;">
+    <button class="btn" onclick="resetAirtableData()" style="background:var(--red);color:#fff;border-color:var(--red);font-weight:700;width:100%;">
       🗑 Backup olib, butun istoriyani o'chirish
+    </button>
+  </div>
+
+  <div class="card" style="border:2px solid var(--yellow);background:rgba(228,162,75,.05);">
+    <div class="ch"><div class="ct" style="color:var(--yellow);">🔧 Texnik xizmat</div></div>
+    <div style="font-size:13px;color:var(--muted);margin-bottom:12px;line-height:1.6;">
+      Bir foydalanuvchi turli qurilmadan kirsa dublikat yozuvlar paydo bo'lishi mumkin.
+      Bu tugma <b>bir xil Chat ID yoki Telegram username</b> bo'lgan yozuvlarni topib birlashtiradi.
+    </div>
+    <button class="btn" onclick="mergeDuplicateUsers()" style="background:var(--yellow);color:#000;border-color:var(--yellow);font-weight:700;width:100%;">
+      🔧 Dublikat foydalanuvchilarni birlashtirish
     </button>
   </div>
 </div>
@@ -607,6 +618,102 @@ async function deleteAllRecords(tableName, records){
     const params = batch.map(id => 'records[]='+id).join('&');
     const url = `https://api.airtable.com/v0/${CFG.base}/${encodeURIComponent(tableName)}?${params}`;
     await fetch(url, { method:'DELETE', headers:{ Authorization:'Bearer '+CFG.tok } });
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// DUBLIKAT FOYDALANUVCHILARNI BIRLASHTIRISH
+// ═══════════════════════════════════════════════════════════════
+async function mergeDuplicateUsers(){
+  if(!confirm('Dublikat foydalanuvchilarni topib birlashtirishni boshlaysizmi?\n\nBu amal: bir xil Chat ID yoki Telegram username bo\'lgan yozuvlardan eng to\'liqini qoldiradi, qolganlarini o\'chiradi.')) return;
+
+  showToast('⏳ Dublikatlar qidirilmoqda...');
+
+  try {
+    const allUsers = await fetchAllRecords(CFG.utbl);
+
+    // Guruhlash: Chat ID va Telegram (normalize qilingan) bo'yicha
+    const groups = {};
+    allUsers.forEach(rec => {
+      const f = rec.fields || {};
+      const chatId = String(f['Chat ID'] || '').trim();
+      const tg = String(f['Telegram'] || '').toLowerCase().replace('@','').trim();
+
+      // Bitta foydalanuvchini ifodalovchi kalit — Chat ID afzal, yo'q bo'lsa Telegram
+      const key = chatId || ('tg:' + tg);
+      if (!key || key === 'tg:') return; // identifikator yo'q
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(rec);
+    });
+
+    // Faqat 2 va undan ko'p yozuvi bo'lganlar
+    const duplicates = Object.entries(groups).filter(([k, arr]) => arr.length > 1);
+
+    if (!duplicates.length) {
+      showToast('✅ Dublikatlar topilmadi');
+      return;
+    }
+
+    if (!confirm(`${duplicates.length} ta dublikat guruh topildi. Birlashtirilsinmi?`)) return;
+
+    let mergedCount = 0;
+    let deletedCount = 0;
+
+    for (const [key, recs] of duplicates) {
+      // Eng to'liq yozuvni tanlash — eng ko'p maydon to'ldirilgan
+      recs.sort((a, b) => {
+        const aFilled = Object.values(a.fields || {}).filter(v => v).length;
+        const bFilled = Object.values(b.fields || {}).filter(v => v).length;
+        return bFilled - aFilled;
+      });
+
+      const keeper = recs[0];
+      const toDelete = recs.slice(1);
+
+      // Keeper ga qolgan yozuvlardan ma'lumotlarni qo'shamiz (faqat bo'sh maydonlarga)
+      const mergedFields = { ...keeper.fields };
+      for (const rec of toDelete) {
+        for (const [field, value] of Object.entries(rec.fields || {})) {
+          if (!mergedFields[field] && value) {
+            mergedFields[field] = value;
+          }
+        }
+      }
+
+      // Keeper ni yangilash (faqat o'zgargan bo'lsa)
+      const changed = JSON.stringify(mergedFields) !== JSON.stringify(keeper.fields);
+      if (changed) {
+        await fetch(`https://api.airtable.com/v0/${CFG.base}/${encodeURIComponent(CFG.utbl)}/${keeper.id}`, {
+          method: 'PATCH',
+          headers: { Authorization: 'Bearer ' + CFG.tok, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ fields: mergedFields })
+        });
+      }
+
+      // Qolganlarini o'chirish (10 tadan batch)
+      const ids = toDelete.map(r => r.id);
+      for (let i = 0; i < ids.length; i += 10) {
+        const batch = ids.slice(i, i + 10);
+        const params = batch.map(id => 'records[]=' + id).join('&');
+        await fetch(`https://api.airtable.com/v0/${CFG.base}/${encodeURIComponent(CFG.utbl)}?${params}`, {
+          method: 'DELETE',
+          headers: { Authorization: 'Bearer ' + CFG.tok }
+        });
+      }
+
+      mergedCount++;
+      deletedCount += toDelete.length;
+    }
+
+    showToast(`✅ ${mergedCount} guruh birlashtirildi, ${deletedCount} dublikat o'chirildi`);
+
+    // Yangilash
+    await loadUsers();
+    fillSelects();renderDash();renderUsers();renderBotPage();renderSidebar();
+
+  } catch(err) {
+    console.error('merge error', err);
+    showToast('❌ Xatolik: ' + err.message);
   }
 }
 
