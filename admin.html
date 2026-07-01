@@ -126,21 +126,15 @@ tr:hover td{background:rgba(255,255,255,.02);}
 <div class="overlay" id="cfgModal">
   <div class="modal">
     <div class="modal-title">🌙 Admin Panel Sozlash</div>
-    <div class="modal-sub">Bir marta kiriting — brauzer eslab qoladi</div>
-    <label class="fl">Airtable Token</label>
-    <input class="fi" id="cfgTok" placeholder="patXXXXXX.XXXXXX">
-    <div class="fhint">→ airtable.com/create/tokens</div>
-    <label class="fl">Airtable Base ID</label>
-    <input class="fi" id="cfgBase" placeholder="appXXXXXXXXXXXXXX">
+    <div class="modal-sub">Google Sheets bilan ishlaydi — Airtable token kerak emas!</div>
+    <label class="fl">Google Apps Script URL (/exec)</label>
+    <input class="fi" id="cfgScriptUrl" placeholder="https://script.google.com/macros/s/XXXX/exec">
+    <div class="fhint">→ Apps Script → Deploy → Manage deployments dagi URL</div>
     <label class="fl">Telegram Bot Token</label>
     <input class="fi" id="cfgBot" placeholder="1234567890:AAXXXXXXXXXX">
     <label class="fl">Mutaxassis Telegram Chat ID</label>
     <input class="fi" id="cfgAdminId" placeholder="100000000">
     <div class="fhint">→ @userinfobot ga /start yuboring va o'z ID ingizni oling</div>
-    <label class="fl">SleepLogs jadval nomi</label>
-    <input class="fi" id="cfgTbl" value="SleepLogs">
-    <label class="fl">Users jadval nomi</label>
-    <input class="fi" id="cfgUTbl" value="Users">
     <button class="btn-go" onclick="saveConfig()">✅ Kirish</button>
   </div>
 </div>
@@ -255,7 +249,7 @@ tr:hover td{background:rgba(255,255,255,.02);}
     <div class="ptitle">🤖 Bot boshqaruvi</div>
     <div class="tactions">
       <button class="btn" onclick="fetchBotInfo()">ℹ️ Bot holati</button>
-      <button class="btn btn-p" onclick="syncFromAirtable()">🔄 Airtable dan yangilash</button>
+      <button class="btn btn-p" onclick="syncFromAirtable()">🔄 Sheets dan yangilash</button>
     </div>
   </div>
   <div class="g2">
@@ -277,7 +271,7 @@ tr:hover td{background:rgba(255,255,255,.02);}
   <div class="card" style="border:2px solid var(--red);background:rgba(248,81,73,.05);">
     <div class="ch"><div class="ct" style="color:var(--red);">⚠️ Xavfli zona</div></div>
     <div style="font-size:13px;color:var(--muted);margin-bottom:12px;line-height:1.6;">
-      Quyidagi tugma <b>barcha foydalanuvchilar va uyqu yozuvlarini</b> Airtable dan o'chiradi.
+      Quyidagi tugma <b>barcha foydalanuvchilar va uyqu yozuvlarini</b> Sheets dan o'chiradi.
       Avval Excel formatda <b>backup</b> olinadi va Telegram orqali <b>shaxsiy chatingizga</b> yuboriladi.<br>
       <b style="color:var(--red);">Bu amal qaytarib bo'lmaydi!</b>
     </div>
@@ -362,17 +356,13 @@ const showToast=msg=>{const t=$('toast');t.textContent=msg;t.classList.add('show
 const closeOv=id=>{$(id).style.display='none';};
 
 window.onload=()=>{
-  const s=localStorage.getItem('adm_cfg_v5');
+  const s=localStorage.getItem('adm_cfg_sheets_v1');
   if(s){
     CFG=JSON.parse(s);
     $('cfgModal').style.display='none';
-    // Eski sozlamalardagi qiymatlarni inputlarga qaytarish (qayta ochilganda)
-    if(CFG.tok)      $('cfgTok').value=CFG.tok;
-    if(CFG.base)     $('cfgBase').value=CFG.base;
-    if(CFG.bot)      $('cfgBot').value=CFG.bot;
-    if(CFG.adminId)  $('cfgAdminId').value=CFG.adminId;
-    if(CFG.tbl)      $('cfgTbl').value=CFG.tbl;
-    if(CFG.utbl)     $('cfgUTbl').value=CFG.utbl;
+    if(CFG.scriptUrl) $('cfgScriptUrl').value=CFG.scriptUrl;
+    if(CFG.bot)        $('cfgBot').value=CFG.bot;
+    if(CFG.adminId)    $('cfgAdminId').value=CFG.adminId;
     loadAll();startAutoRefresh();
   }
   renderMsgHist();
@@ -380,15 +370,12 @@ window.onload=()=>{
 
 function saveConfig(){
   CFG={
-    tok:     $('cfgTok').value.trim(),
-    base:    $('cfgBase').value.trim(),
-    bot:     $('cfgBot').value.trim(),
-    adminId: $('cfgAdminId').value.trim(),
-    tbl:     $('cfgTbl').value.trim()||'SleepLogs',
-    utbl:    $('cfgUTbl').value.trim()||'Users'
+    scriptUrl: $('cfgScriptUrl').value.trim(),
+    bot:       $('cfgBot').value.trim(),
+    adminId:   $('cfgAdminId').value.trim(),
   };
-  if(!CFG.tok||!CFG.base){showToast('⚠️ Token va Base ID kerak!');return;}
-  localStorage.setItem('adm_cfg_v5',JSON.stringify(CFG));
+  if(!CFG.scriptUrl){showToast('⚠️ Script URL kerak!');return;}
+  localStorage.setItem('adm_cfg_sheets_v1',JSON.stringify(CFG));
   $('cfgModal').style.display='none';
   loadAll();startAutoRefresh();
 }
@@ -410,38 +397,35 @@ async function loadAll(){
   fillSelects();renderDash();renderSidebar();renderUsers();renderLogs();renderMsgHist();renderBotPage();
 }
 
-async function atGet(tbl,extra=''){
-  const url=`https://api.airtable.com/v0/${CFG.base}/${encodeURIComponent(tbl)}?pageSize=100${extra}`;
-  const r=await fetch(url,{headers:{Authorization:'Bearer '+CFG.tok}});
-  if(!r.ok)throw new Error(r.status);
-  return r.json();
+// ══ Google Apps Script ga GET so'rov (o'qish) ══
+async function scriptGet(action){
+  if(!CFG.scriptUrl) return null;
+  try{
+    const r=await fetch(`${CFG.scriptUrl}?action=${action}`);
+    const d=await r.json();
+    return d.ok ? d.data : null;
+  }catch(e){console.log('scriptGet error:',e);return null;}
+}
+
+// ══ Google Apps Script ga POST so'rov (yozish) ══
+async function scriptPost(payload){
+  if(!CFG.scriptUrl) return {ok:false};
+  try{
+    const r=await fetch(CFG.scriptUrl,{method:'POST',body:JSON.stringify(payload)});
+    return await r.json();
+  }catch(e){console.log('scriptPost error:',e);return {ok:false};}
 }
 
 async function loadLogs(){
-  if(!CFG.tok)return;
-  try{
-    let recs=[],off='';
-    while(true){
-      const d=await atGet(CFG.tbl,'&sort[0][field]=Saqlangan&sort[0][direction]=desc'+(off?'&offset='+off:''));
-      recs=recs.concat(d.records);
-      if(d.offset)off=d.offset; else break;
-      if(recs.length>=600)break;
-    }
-    logs=recs.map(r=>({id:r.id,date:r.fields['Sana']||'',start:r.fields['Yotgan vaqt']||'',end:r.fields['Turgan vaqt']||'',hours:parseFloat(r.fields['Soat'])||0,type:r.fields['Uyqu turi']||'',mood:parseInt(r.fields['Sifat'])||3,waking:parseInt(r.fields["Uyg'onish"])||0,symptoms:r.fields['Belgilar']||'',note:r.fields['Izoh']||'',mamaName:r.fields['Ona ismi']||'',mamaPhone:r.fields['Telegram']||'',babyName:r.fields['Chaqaloq']||'',babyAge:r.fields['Yosh (oy)']||'',savedAt:r.fields['Saqlangan']||''}));
-  }catch(e){console.log('Logs:',e);}
+  if(!CFG.scriptUrl)return;
+  const data=await scriptGet('getLogs');
+  if(data) logs=data;
 }
 
 async function loadUsers(){
-  if(!CFG.tok)return;
-  try{
-    let recs=[],off='';
-    while(true){
-      const d=await atGet(CFG.utbl,(off?'&offset='+off:''));
-      recs=recs.concat(d.records);
-      if(d.offset)off=d.offset; else break;
-    }
-    users=recs.map(r=>({_id:r.id,name:r.fields['Ism']||'',username:r.fields['Telegram']||'',phone:r.fields['Telefon']||'',babyName:r.fields['Chaqaloq ismi']||'',babyBirth:r.fields["Tug'ilgan sana"]||'',status:r.fields['Holat']||'Faol',chatId:r.fields['Chat ID']||'',note:r.fields['Izoh']||''}));
-  }catch(e){console.log('Users:',e);users=[];}
+  if(!CFG.scriptUrl)return;
+  const data=await scriptGet('getUsers');
+  if(data) users=data;
   $('navUC').textContent=users.length;
 }
 
@@ -462,23 +446,26 @@ function openEdit(idx){
 
 async function updateUser(){
   const id=$('euId').value;
-  const fields={'Ism':$('euName').value,'Telegram':$('euUser').value,'Telefon':$('euPhone').value,'Chaqaloq ismi':$('euBaby').value,'Holat':$('euStatus').value,'Izoh':$('euNote').value};
-  const r=await fetch(`https://api.airtable.com/v0/${CFG.base}/${encodeURIComponent(CFG.utbl)}/${id}`,{method:'PATCH',headers:{Authorization:'Bearer '+CFG.tok,'Content-Type':'application/json'},body:JSON.stringify({fields})});
-  if(r.ok){showToast('✅ Yangilandi');closeOv('editModal');await loadUsers();renderUsers();}
+  const res=await scriptPost({
+    action:'updateUser', id,
+    name:$('euName').value, username:$('euUser').value, phone:$('euPhone').value,
+    babyName:$('euBaby').value, status:$('euStatus').value, note:$('euNote').value
+  });
+  if(res.ok){showToast('✅ Yangilandi');closeOv('editModal');await loadUsers();renderUsers();}
   else showToast('❌ Xatolik');
 }
 
 async function toggleStatus(idx){
   const u=users[idx],ns=u.status==='Faol'?'Bloklangan':'Faol';
-  const r=await fetch(`https://api.airtable.com/v0/${CFG.base}/${encodeURIComponent(CFG.utbl)}/${u._id}`,{method:'PATCH',headers:{Authorization:'Bearer '+CFG.tok,'Content-Type':'application/json'},body:JSON.stringify({fields:{Holat:ns}})});
-  if(r.ok){showToast(ns==='Bloklangan'?'🚫 Bloklandi':'✅ Faollashtirildi');await loadUsers();renderUsers();}
+  const res=await scriptPost({action:'toggleStatus', id:u._id, newStatus:ns});
+  if(res.ok){showToast(ns==='Bloklangan'?'🚫 Bloklandi':'✅ Faollashtirildi');await loadUsers();renderUsers();}
 }
 
 async function deleteUser(idx){
   if(!confirm('Haqiqatan ham o\'chirilsinmi?'))return;
   const u=users[idx];
-  const r=await fetch(`https://api.airtable.com/v0/${CFG.base}/${encodeURIComponent(CFG.utbl)}/${u._id}`,{method:'DELETE',headers:{Authorization:'Bearer '+CFG.tok}});
-  if(r.ok){showToast('🗑 O\'chirildi');await loadUsers();renderUsers();renderSidebar();}
+  const res=await scriptPost({action:'deleteUser', id:u._id});
+  if(res.ok){showToast('🗑 O\'chirildi');await loadUsers();renderUsers();renderSidebar();}
 }
 
 function renderUsers(){
@@ -596,33 +583,14 @@ async function tgSendDocument(chatId, fileBlob, filename, caption){
   }
 }
 
-// Airtable jadvalining barcha yozuvlarini olish (offset orqali)
-async function fetchAllRecords(tableName){
-  const all = [];
-  let offset = '';
-  do {
-    const url = `https://api.airtable.com/v0/${CFG.base}/${encodeURIComponent(tableName)}?pageSize=100${offset?'&offset='+offset:''}`;
-    const r = await fetch(url, { headers:{ Authorization:'Bearer '+CFG.tok } });
-    const d = await r.json();
-    if(d.records) all.push(...d.records);
-    offset = d.offset || '';
-  } while(offset);
-  return all;
-}
-
-// Airtable jadvalidagi yozuvlarni batch o'chirish (10 tadan)
-async function deleteAllRecords(tableName, records){
-  const ids = records.map(r => r.id);
-  for(let i=0; i<ids.length; i+=10){
-    const batch = ids.slice(i, i+10);
-    const params = batch.map(id => 'records[]='+id).join('&');
-    const url = `https://api.airtable.com/v0/${CFG.base}/${encodeURIComponent(tableName)}?${params}`;
-    await fetch(url, { method:'DELETE', headers:{ Authorization:'Bearer '+CFG.tok } });
-  }
+// Barcha ma'lumotni Script orqali olish (backup uchun)
+async function fetchAllRecords(type){
+  const data = await scriptGet(type==='logs'?'getLogs':'getUsers');
+  return data || [];
 }
 
 // ═══════════════════════════════════════════════════════════════
-// DUBLIKAT FOYDALANUVCHILARNI BIRLASHTIRISH
+// DUBLIKAT FOYDALANUVCHILARNI BIRLASHTIRISH — Script orqali
 // ═══════════════════════════════════════════════════════════════
 async function mergeDuplicateUsers(){
   if(!confirm('Dublikat foydalanuvchilarni topib birlashtirishni boshlaysizmi?\n\nBu amal: bir xil Chat ID yoki Telegram username bo\'lgan yozuvlardan eng to\'liqini qoldiradi, qolganlarini o\'chiradi.')) return;
@@ -630,84 +598,14 @@ async function mergeDuplicateUsers(){
   showToast('⏳ Dublikatlar qidirilmoqda...');
 
   try {
-    const allUsers = await fetchAllRecords(CFG.utbl);
+    const res = await scriptPost({ action: 'mergeDuplicates' });
+    if(!res.ok){ showToast('❌ Xatolik'); return; }
 
-    // Guruhlash: Chat ID va Telegram (normalize qilingan) bo'yicha
-    const groups = {};
-    allUsers.forEach(rec => {
-      const f = rec.fields || {};
-      const chatId = String(f['Chat ID'] || '').trim();
-      const tg = String(f['Telegram'] || '').toLowerCase().replace('@','').trim();
+    const { merged, deleted } = res.result;
+    if(!merged){ showToast('✅ Dublikatlar topilmadi'); return; }
 
-      // Bitta foydalanuvchini ifodalovchi kalit — Chat ID afzal, yo'q bo'lsa Telegram
-      const key = chatId || ('tg:' + tg);
-      if (!key || key === 'tg:') return; // identifikator yo'q
-      if (!groups[key]) groups[key] = [];
-      groups[key].push(rec);
-    });
+    showToast(`✅ ${merged} guruh birlashtirildi, ${deleted} dublikat o'chirildi`);
 
-    // Faqat 2 va undan ko'p yozuvi bo'lganlar
-    const duplicates = Object.entries(groups).filter(([k, arr]) => arr.length > 1);
-
-    if (!duplicates.length) {
-      showToast('✅ Dublikatlar topilmadi');
-      return;
-    }
-
-    if (!confirm(`${duplicates.length} ta dublikat guruh topildi. Birlashtirilsinmi?`)) return;
-
-    let mergedCount = 0;
-    let deletedCount = 0;
-
-    for (const [key, recs] of duplicates) {
-      // Eng to'liq yozuvni tanlash — eng ko'p maydon to'ldirilgan
-      recs.sort((a, b) => {
-        const aFilled = Object.values(a.fields || {}).filter(v => v).length;
-        const bFilled = Object.values(b.fields || {}).filter(v => v).length;
-        return bFilled - aFilled;
-      });
-
-      const keeper = recs[0];
-      const toDelete = recs.slice(1);
-
-      // Keeper ga qolgan yozuvlardan ma'lumotlarni qo'shamiz (faqat bo'sh maydonlarga)
-      const mergedFields = { ...keeper.fields };
-      for (const rec of toDelete) {
-        for (const [field, value] of Object.entries(rec.fields || {})) {
-          if (!mergedFields[field] && value) {
-            mergedFields[field] = value;
-          }
-        }
-      }
-
-      // Keeper ni yangilash (faqat o'zgargan bo'lsa)
-      const changed = JSON.stringify(mergedFields) !== JSON.stringify(keeper.fields);
-      if (changed) {
-        await fetch(`https://api.airtable.com/v0/${CFG.base}/${encodeURIComponent(CFG.utbl)}/${keeper.id}`, {
-          method: 'PATCH',
-          headers: { Authorization: 'Bearer ' + CFG.tok, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ fields: mergedFields })
-        });
-      }
-
-      // Qolganlarini o'chirish (10 tadan batch)
-      const ids = toDelete.map(r => r.id);
-      for (let i = 0; i < ids.length; i += 10) {
-        const batch = ids.slice(i, i + 10);
-        const params = batch.map(id => 'records[]=' + id).join('&');
-        await fetch(`https://api.airtable.com/v0/${CFG.base}/${encodeURIComponent(CFG.utbl)}?${params}`, {
-          method: 'DELETE',
-          headers: { Authorization: 'Bearer ' + CFG.tok }
-        });
-      }
-
-      mergedCount++;
-      deletedCount += toDelete.length;
-    }
-
-    showToast(`✅ ${mergedCount} guruh birlashtirildi, ${deletedCount} dublikat o'chirildi`);
-
-    // Yangilash
     await loadUsers();
     fillSelects();renderDash();renderUsers();renderBotPage();renderSidebar();
 
@@ -745,23 +643,19 @@ async function resetAirtableData(){
   showToast('⏳ Backup yaratilmoqda...');
 
   try {
-    // 1. Barcha ma'lumotlarni Airtable dan yuklab olish
+    // 1. Barcha ma'lumotlarni Sheets dan yuklab olish
     const [usersData, logsData] = await Promise.all([
-      fetchAllRecords(CFG.utbl),
-      fetchAllRecords(CFG.tbl)
+      fetchAllRecords('users'),
+      fetchAllRecords('logs')
     ]);
 
     // 2. Excel fayl yaratish
     const wb = XLSX.utils.book_new();
 
-    // Sheet 1: Users
-    const usersRows = usersData.map(r => r.fields || {});
-    const usersWS = XLSX.utils.json_to_sheet(usersRows);
+    const usersWS = XLSX.utils.json_to_sheet(usersData);
     XLSX.utils.book_append_sheet(wb, usersWS, 'Foydalanuvchilar');
 
-    // Sheet 2: SleepLogs
-    const logsRows = logsData.map(r => r.fields || {});
-    const logsWS = XLSX.utils.json_to_sheet(logsRows);
+    const logsWS = XLSX.utils.json_to_sheet(logsData);
     XLSX.utils.book_append_sheet(wb, logsWS, 'Uyqu yozuvlari');
 
     // 3. Faylni Blob ga aylantirish
@@ -786,7 +680,6 @@ async function resetAirtableData(){
     const sent = await tgSendDocument(CFG.adminId, blob, fname, caption);
 
     if(!sent){
-      // Telegram yuborish ishlamasa — brauzerga yuklash imkonini berib, jarayonni to'xtatish
       showToast('❌ Telegramga yuborib bo\'lmadi! Brauzerdan yuklab oling');
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
@@ -797,18 +690,12 @@ async function resetAirtableData(){
 
     showToast('✅ Backup yuborildi! O\'chirilmoqda...');
 
-    // 6. Faqat backup muvaffaqiyatli yuborilsa — o'chirish
-    if(logsData.length){
-      await deleteAllRecords(CFG.tbl, logsData);
-    }
-    if(usersData.length){
-      await deleteAllRecords(CFG.utbl, usersData);
-    }
+    // 6. Faqat backup muvaffaqiyatli yuborilsa — Sheets ni tozalash (Script orqali)
+    const resetRes = await scriptPost({ action: 'resetAllData' });
 
     // 7. Lokal ma'lumotlarni yangilash
     logs = [];
     users = [];
-    // Xabarlar tarixini ham tozalash
     localStorage.removeItem(MHKEY);
     fillSelects();renderDash();renderUsers();renderLogs();renderBotPage();renderSidebar();renderMsgHist();
 
