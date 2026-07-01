@@ -357,7 +357,7 @@ async function callScript(data) {
   } catch(e) { return { ok: false }; }
 }
 
-// Airtable da foydalanuvchi bor-yo'qligini tekshirish (GET — javob o'qish mumkin)
+// Sheets da foydalanuvchi bor-yo'qligini tekshirish (GET — javob o'qish mumkin)
 async function checkUserOnServer(chatId, username) {
   if (!SCRIPT_URL || SCRIPT_URL.includes('GOOGLE_APPS_SCRIPT')) return { ok: false };
   try {
