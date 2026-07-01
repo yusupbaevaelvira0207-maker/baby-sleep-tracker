@@ -175,6 +175,7 @@ tr:hover td{background:rgba(255,255,255,.02);}
     <button class="sitem" onclick="goPage('users')"><span class="ni">👥</span>Foydalanuvchilar<span class="sbadge green" id="navUC">0</span></button>
     <button class="sitem" onclick="goPage('bot')"><span class="ni">🤖</span>Bot boshqaruvi</button>
     <button class="sitem" onclick="goPage('logs')"><span class="ni">📋</span>Yozuvlar</button>
+    <button class="sitem" onclick="goPage('anketa')"><span class="ni">📝</span>Anketalar</button>
     <button class="sitem" onclick="goPage('message')"><span class="ni">💬</span>Xabarlar</button>
     <div class="snav-label" style="margin-top:8px;">Boshqaruv</div>
     <button class="sitem" onclick="loadAll()"><span class="ni">🔄</span>Yangilash</button>
@@ -304,10 +305,26 @@ tr:hover td{background:rgba(255,255,255,.02);}
   <div class="card">
     <div class="tw">
       <table>
-        <thead><tr><th>Sana</th><th>Ona / Chaqaloq</th><th>Vaqt</th><th>Soat</th><th>Tur</th><th>Sifat</th><th>Uyg'onish</th><th>Belgilar</th><th>Amal</th></tr></thead>
-        <tbody id="logsBody"><tr><td colspan="9" style="text-align:center;color:var(--muted);padding:24px;">Yuklanmoqda...</td></tr></tbody>
+        <thead><tr><th style="width:36px;text-align:center;">✓</th><th>Sana</th><th>Ona / Chaqaloq</th><th>Vaqt</th><th>Soat</th><th>Tur</th><th>Sifat</th><th>Uyg'onish</th><th>Belgilar</th><th>Amal</th></tr></thead>
+        <tbody id="logsBody"><tr><td colspan="10" style="text-align:center;color:var(--muted);padding:24px;">Yuklanmoqda...</td></tr></tbody>
       </table>
     </div>
+  </div>
+</div>
+
+<!-- ANKETALAR -->
+<div class="page" id="page-anketa">
+  <div class="topbar">
+    <div class="ptitle">📝 Anketalar</div>
+    <div class="tactions">
+      <select class="fsel" id="ankUser" onchange="renderAnketaAdmin()" style="width:auto;padding:8px 12px;min-width:200px;">
+        <option value="">-- Ona tanlang --</option>
+      </select>
+      <button class="btn" onclick="loadAnketas()">🔄 Yangilash</button>
+    </div>
+  </div>
+  <div id="ankContent">
+    <div class="card"><div style="color:var(--muted);font-size:13px;text-align:center;padding:20px;">Anketani ko'rish uchun yuqoridan ona tanlang</div></div>
   </div>
 </div>
 
@@ -347,7 +364,7 @@ tr:hover td{background:rgba(255,255,255,.02);}
 <div class="toast" id="toast"></div>
 
 <script>
-const PAGES=['dashboard','users','bot','logs','message'];
+const PAGES=['dashboard','users','bot','logs','anketa','message'];
 const CLR=['#58a6ff','#3fb950','#ffa657','#bc8cff','#f85149','#d29922','#79c0ff','#56d364'];
 const MHKEY='adm_mh_v4';
 let CFG={},logs=[],users=[],wChart=null,autoTimer=null;
@@ -502,7 +519,7 @@ function renderUsers(){
       </div>
       <div class="ustats">
         <div class="ustat"><div class="ustat-val">${ul.length}</div><div class="ustat-lbl">Yozuv</div></div>
-        <div class="ustat"><div class="ustat-val">${avg}h</div><div class="ustat-lbl">O'rtacha</div></div>
+        <div class="ustat"><div class="ustat-val" style="font-size:11px;">${avg==='-'?'-':fmtHours(parseFloat(avg))}</div><div class="ustat-lbl">O'rtacha</div></div>
         <div class="ustat"><div class="ustat-val" style="font-size:11px;">${last}</div><div class="ustat-lbl">Oxirgi</div></div>
       </div>
       <div class="uactions">
@@ -764,6 +781,19 @@ function renderSidebar(){
   }).join('');
 }
 
+// Soatni "1 soat 30 min" ko'rinishiga aylantirish
+function fmtHours(h){
+  if(!h||h<=0) return '0 min';
+  const hh=Math.floor(h);
+  const mm=Math.round((h-hh)*60);
+  if(hh===0) return mm+' min';
+  if(mm===0) return hh+' soat';
+  return hh+' soat '+mm+' min';
+}
+
+// Belgilangan yozuvlarni saqlash (id bo'yicha)
+let selectedLogs = {};
+
 function renderLogs(){
   const mf=$('fMama').value,tf=$('fType').value;
   let f=logs;if(mf)f=f.filter(l=>l.mamaName===mf);if(tf)f=f.filter(l=>l.type===tf);
@@ -779,7 +809,7 @@ function renderLogs(){
   const me=['','😭','😟','😐','😊','😴'];
   const body=$('logsBody');
   if(!Object.keys(groups).length){
-    body.innerHTML='<tr><td colspan="9" style="text-align:center;color:var(--muted);padding:22px;">Yozuv topilmadi</td></tr>';
+    body.innerHTML='<tr><td colspan="10" style="text-align:center;color:var(--muted);padding:22px;">Yozuv topilmadi</td></tr>';
     return;
   }
 
@@ -789,18 +819,84 @@ function renderLogs(){
     const baby=gl[0]?.babyName||'';
     const rows=gl.map(l=>{
       const hc=l.hours>=10?'var(--green)':l.hours>=8?'var(--accent)':l.hours>=6?'var(--yellow)':'var(--red)';
-      return `<tr class="log-child log-g-${gi}" style="display:none;background:var(--surface);"><td>${l.date}</td><td><small style="color:var(--muted)">${l.babyName}${l.babyAge?' ('+l.babyAge+'oy)':''}</small></td><td style="font-family:'DM Mono',monospace;">${l.start}–${l.end}</td><td style="font-weight:700;color:${hc}">${l.hours.toFixed(1)}h</td><td>${l.type==='Tungi'?'🌙':'☀️'} ${l.type}</td><td>${me[l.mood]||'😐'}</td><td style="text-align:center">${l.waking}</td><td>${l.symptoms?`<span class="badge b-r">${l.symptoms.split(',')[0]}</span>`:''}</td><td><button class="btn btn-sm" onclick="openMsgTo('${l.mamaName}')">💬</button></td></tr>`;
+      const checked=selectedLogs[l.id]?'checked':'';
+      return `<tr class="log-child log-g-${gi}" style="display:none;background:var(--surface);">
+        <td style="text-align:center;"><input type="checkbox" class="log-chk chk-g-${gi}" data-id="${l.id}" data-hours="${l.hours}" ${checked} onchange="toggleLogSelect('${l.id}',${l.hours},${gi})" style="cursor:pointer;width:16px;height:16px;accent-color:var(--accent);"></td>
+        <td>${l.date}</td>
+        <td><small style="color:var(--muted)">${l.babyName}${l.babyAge?' ('+l.babyAge+'oy)':''}</small></td>
+        <td style="font-family:'DM Mono',monospace;">${l.start}–${l.end}</td>
+        <td style="font-weight:700;color:${hc}">${fmtHours(l.hours)}</td>
+        <td>${l.type==='Tungi'?'🌙':'☀️'} ${l.type}</td>
+        <td>${me[l.mood]||'😐'}</td>
+        <td style="text-align:center">${l.waking}</td>
+        <td>${l.symptoms?`<span class="badge b-r">${l.symptoms.split(',')[0]}</span>`:''}</td>
+        <td><button class="btn btn-sm" onclick="openMsgTo('${l.mamaName}')">💬</button></td>
+      </tr>`;
     }).join('');
-    return `<tr class="log-group" onclick="toggleLogGroup(${gi})" style="cursor:pointer;background:rgba(88,166,255,.05);">
-      <td colspan="9" style="padding:11px 14px;">
-        <span id="log-arrow-${gi}" style="display:inline-block;width:14px;transition:transform .2s;">▶</span>
-        <strong>${name}</strong>
-        ${baby?`<small style="color:var(--muted);"> · 👶 ${baby}</small>`:''}
-        <span class="badge b-p" style="margin-left:10px;">${gl.length} yozuv</span>
-        <span class="badge b-g" style="margin-left:6px;">⌀ ${avg}h</span>
+    return `<tr class="log-group" style="background:rgba(88,166,255,.05);">
+      <td colspan="10" style="padding:11px 14px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+          <div style="display:flex;align-items:center;flex-wrap:wrap;gap:8px;cursor:pointer;flex:1;min-width:200px;" onclick="toggleLogGroup(${gi})">
+            <span id="log-arrow-${gi}" style="display:inline-block;width:14px;transition:transform .2s;">▶</span>
+            <strong>${name}</strong>
+            ${baby?`<small style="color:var(--muted);"> · 👶 ${baby}</small>`:''}
+            <span class="badge b-p" style="margin-left:6px;">${gl.length} yozuv</span>
+            <span class="badge b-g">⌀ ${fmtHours(parseFloat(avg))}</span>
+          </div>
+          <div id="sel-summary-${gi}" style="display:none;padding:7px 12px;background:rgba(255,140,105,.12);border:1px solid var(--accent);border-radius:9px;font-size:12px;white-space:nowrap;">
+            <span style="color:var(--muted);">Belgilangan:</span>
+            <strong id="sel-count-${gi}" style="color:var(--accent);">0 ta</strong>
+            <span style="margin:0 6px;color:var(--border);">|</span>
+            <span style="color:var(--muted);">Jami:</span>
+            <strong id="sel-sum-${gi}" style="color:var(--green);">0 min</strong>
+            <span style="margin:0 6px;color:var(--border);">|</span>
+            <span style="color:var(--muted);">O'rtacha:</span>
+            <strong id="sel-avg-${gi}" style="color:var(--purple);">0 min</strong>
+            <button class="btn btn-sm" onclick="clearGroupSelection(${gi})" style="margin-left:8px;padding:2px 8px;">✕</button>
+          </div>
+        </div>
       </td>
     </tr>${rows}`;
   }).join('');
+
+  // Belgilangan holatlarni qayta hisoblash
+  Object.keys(groups).forEach((name,gi)=>updateGroupSummary(gi));
+}
+
+function toggleLogSelect(id,hours,gi){
+  if(selectedLogs[id]) delete selectedLogs[id];
+  else selectedLogs[id]={hours};
+  updateGroupSummary(gi);
+}
+
+function updateGroupSummary(gi){
+  const checks=document.querySelectorAll('.chk-g-'+gi);
+  let count=0,sum=0;
+  checks.forEach(chk=>{
+    const id=chk.getAttribute('data-id');
+    if(selectedLogs[id]){count++;sum+=selectedLogs[id].hours;}
+  });
+
+  const summary=$('sel-summary-'+gi);
+  if(!summary) return;
+  if(count>0){
+    summary.style.display='inline-block';
+    $('sel-count-'+gi).textContent=count+' ta';
+    $('sel-sum-'+gi).textContent=fmtHours(sum);
+    $('sel-avg-'+gi).textContent=fmtHours(sum/count);
+  } else {
+    summary.style.display='none';
+  }
+}
+
+function clearGroupSelection(gi){
+  const checks=document.querySelectorAll('.chk-g-'+gi);
+  checks.forEach(chk=>{
+    const id=chk.getAttribute('data-id');
+    delete selectedLogs[id];
+    chk.checked=false;
+  });
+  updateGroupSummary(gi);
 }
 
 function toggleLogGroup(gi){
@@ -814,7 +910,7 @@ function toggleLogGroup(gi){
 function logRow(l){
   const me=['','😭','😟','😐','😊','😴'];
   const hc=l.hours>=10?'var(--green)':l.hours>=8?'var(--accent)':l.hours>=6?'var(--yellow)':'var(--red)';
-  return `<div class="lr"><div class="licon">${l.type==='Tungi'?'🌙':'☀️'}</div><div class="linfo"><div class="lmain">${l.mamaName} · ${l.babyName}</div><div class="lsub">${l.date} · ${l.start}–${l.end} · ${me[l.mood]||''} · ${l.waking}x${l.symptoms?' · ⚠️':''}</div></div><div class="lhours" style="color:${hc}">${l.hours.toFixed(1)}h</div><button class="btn btn-sm" onclick="openMsgTo('${l.mamaName}')" style="margin-left:8px;">💬</button></div>`;
+  return `<div class="lr"><div class="licon">${l.type==='Tungi'?'🌙':'☀️'}</div><div class="linfo"><div class="lmain">${l.mamaName} · ${l.babyName}</div><div class="lsub">${l.date} · ${l.start}–${l.end} · ${me[l.mood]||''} · ${l.waking}x${l.symptoms?' · ⚠️':''}</div></div><div class="lhours" style="color:${hc}">${fmtHours(l.hours)}</div><button class="btn btn-sm" onclick="openMsgTo('${l.mamaName}')" style="margin-left:8px;">💬</button></div>`;
 }
 
 function fillSelects(){
@@ -872,7 +968,7 @@ function updateMamaStat(name){
     <div><strong>🤖 Chat ID:</strong> ${u?.chatId?`<span class="badge b-p">${u.chatId} ✅</span>`:'<span class="badge b-gr">Ulanmagan</span>'}</div>
     <div><strong>👶 Chaqaloq:</strong> ${u?.babyName||ul[0]?.babyName||'—'}</div>
     <div><strong>📊 Yozuvlar:</strong> ${ul.length}</div>
-    <div><strong>⏱ O'rtacha:</strong> ${avg}h</div>
+    <div><strong>⏱ O'rtacha:</strong> ${avg==='-'?'-':fmtHours(parseFloat(avg))}</div>
     <div><strong>📅 Oxirgi:</strong> ${ul[0]?.date||'—'}</div>
   </div>`;
 }
@@ -922,6 +1018,118 @@ function renderMsgHist(){
     :h.slice(0,10).map(m=>`<div class="lr"><div class="licon">📤</div><div class="linfo"><div class="lmain">${m.to}</div><div class="lsub">${m.text.substring(0,80)}${m.text.length>80?'...':''}</div><div class="lsub">${new Date(m.time).toLocaleString('uz-UZ')}</div></div></div>`).join('');
 }
 
+// ═══════════════════════════════════════════════════════════════
+// ANKETALAR — ko'rish (versiyalar bilan)
+// ═══════════════════════════════════════════════════════════════
+// Savol kalitlari → matnlari (mama-app schema bilan mos)
+const ANK_LABELS = {
+  oila_tarkibi:"Oila tarkibi", kim_uxlatadi:"Kim uxlatadi", oila_rozi:"Oila rozi?", oila_amal:"Oila qarorlarga amal qiladimi?",
+  konikmalar:"Ko'nikmalar", yangi_konikma:"Yangi ko'nikma qachondan", tish_chiqayapti:"Tishlari chiqayaptimi", tish_belgi:"Tish belgilari", tish_kechiradi:"Tish chiqishini qanday kechiradi", tish_tasir:"Kayfiyatga ta'siri",
+  homiladorlik_asorat:"Homiladorlik/tug'ruq asorati", sogliq_tashxis:"Sog'liq tashxisi", dori:"Dori-darmon", oxirgi_emlash:"Oxirgi emlash", keyingi_emlash:"Keyingi emlash", kasallanish:"Kasallanish chastotasi", kasal_qanday:"Hozir kasal — qanday", ob_havo:"Ob-havoga munosabat", teri:"Teri holati", qorin:"Qorin bezovtaligi",
+  allergiya:"Oziq-ovqat allergiyasi", emizgich:"Emizgich (soska)",
+  muammo_qachon:"Muammo qachondan", muammo_tavsif:"Muammo tavsifi",
+  qayerda_uxlaydi:"Qayerda uxlaydi", joy_uygoq:"Uyqu joyi uyg'oqda ham", kochirib:"Ko'chirib qo'yiladimi", joy_ozgartirish:"Joyni o'zgartirish maqsadi", harorat:"Xona harorati", namlik:"Xona namligi", aksessuarlar:"Uyqu aksessuarlari", kiyim:"Uyqu kiyimi", taglik:"Ertalab taglik", quyosh_chiqish:"Quyosh chiqishi", quyosh_botish:"Quyosh botishi", blackout:"Blackout pardalar", shovqinlar:"Shovqinlar",
+  tun_60daq:"Tun: 60 daq oldin", tun_marosim:"Tun: marosim", tun_usul:"Tun: yotqizish usuli", tun_usul_ozg:"Tun: usulni o'zgartirish", tun_muddat:"Tun: uxlab qolish muddati", tun_tinch:"Tun: tinch uxlaydimi", tun_uygonish:"Tun: necha marta uyg'onadi", tun_qayta:"Tun: qayta uxlash usuli", tun_uygoq:"Tun: uyg'oq qancha turadi", tun_yarim:"Tun: yarim farqi",
+  kun_30daq:"Kun: 30 daq oldin", kun_marosim:"Kun: marosim", kun_usul:"Kun: yotqizish usuli", kun_usul_ozg:"Kun: usulni o'zgartirish", kun_vaqt:"Kun: uxlab qolish vaqti", kun_tinch:"Kun: tinch uxlaydimi", kun_uzaytirish:"Kun: uyquni uzaytirish",
+  uygonish_kayfiyat:"Uyg'onish kayfiyati", uygoq_oxiri:"Uyg'oqlik oxiri kayfiyat", uyqu_orasi:"Uyqular orasida", chomiltirish:"Cho'miltirish vaqti", chomiltirish_keyin:"Cho'miltirishdan keyin",
+  ona_uxlash:"Ona: yaxshi uxlaydimi", ona_soat:"Ona: sutkada necha soat", ona_uzun:"Ona: eng uzun uyqu", ona_kunduz:"Ona: kunduzi uxlaydimi", ona_hislar:"Ona: 3 his-tuyg'u", ona_fikrlar:"Ona: fikrlar", ona_shkala:"Ona: mamnuniyat (1-10)", ona_vaqt:"Ona: bola bilan vaqt",
+  maqsad_min:"Minimal maqsad", maqsad_qilgan:"Nima qilgan",
+  muhim_voqea:"Muhim voqealar", qoshimcha:"Qo'shimcha ma'lumot",
+};
+
+let anketaCache = [];   // getAllAnketa dan
+let anketaVersions = {}; // tanlangan onaning barcha versiyalari
+
+async function loadAnketas(){
+  if(!CFG.scriptUrl) return;
+  const data = await scriptGet('getAllAnketa');
+  anketaCache = data || [];
+  fillAnketaSelect();
+  if($('ankUser').value) renderAnketaAdmin();
+}
+
+function fillAnketaSelect(){
+  const el = $('ankUser');
+  const cur = el.value;
+  // Anketa topshirgan onalar + barcha onalar
+  const names = [...new Set([...anketaCache.map(a=>a.mamaName), ...users.map(u=>u.name)].filter(Boolean))];
+  el.innerHTML = '<option value="">-- Ona tanlang --</option>' +
+    names.map(n=>{
+      const has = anketaCache.some(a=>a.mamaName===n);
+      return `<option value="${n}">${has?'✅ ':''}${n}</option>`;
+    }).join('');
+  if(cur) el.value = cur;
+}
+
+async function renderAnketaAdmin(){
+  const name = $('ankUser').value;
+  const box = $('ankContent');
+  if(!name){ box.innerHTML='<div class="card"><div style="color:var(--muted);font-size:13px;text-align:center;padding:20px;">Ona tanlang</div></div>'; return; }
+
+  // Shu onaning barcha versiyalarini olish
+  const u = users.find(x=>x.name===name);
+  const anketaEntry = anketaCache.find(a=>a.mamaName===name);
+  const chatId = u?.chatId || anketaEntry?.chatId || '';
+  const username = u?.username || anketaEntry?.username || '';
+
+  box.innerHTML = '<div class="card"><div class="loading"><div class="spinner"></div><br>Yuklanmoqda...</div></div>';
+
+  const versions = await scriptGet('getAnketa&chatId='+encodeURIComponent(chatId)+'&username='+encodeURIComponent(username));
+  if(!versions || !versions.length){
+    box.innerHTML='<div class="card"><div style="color:var(--muted);font-size:13px;text-align:center;padding:20px;">Bu ona hali anketa to\'ldirmagan</div></div>';
+    return;
+  }
+
+  // Versiya tanlash
+  const verOpts = versions.map((v,i)=>`<option value="${i}">Versiya ${v.version} · ${new Date(v.savedAt).toLocaleString('uz-UZ')}</option>`).join('');
+  window._ankVersions = versions;
+
+  box.innerHTML = `
+    <div class="card">
+      <div class="ch">
+        <div class="ct">📝 ${name} — anketa</div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <span class="badge b-p">${versions.length} versiya</span>
+          <select class="fsel" id="ankVerSel" onchange="showAnketaVersion(this.value)" style="width:auto;padding:6px 10px;">${verOpts}</select>
+        </div>
+      </div>
+      <div id="ankAnswers"></div>
+    </div>`;
+  showAnketaVersion(0);
+}
+
+function showAnketaVersion(idx){
+  const versions = window._ankVersions || [];
+  const v = versions[idx];
+  if(!v){ return; }
+  let ans = {};
+  try { ans = JSON.parse(v.answers); } catch(e){ ans = {}; }
+
+  const rows = Object.keys(ANK_LABELS).map(key=>{
+    let val = ans[key];
+    if(val===undefined || val===null || val===''){ return ''; }
+    let disp = '';
+    if(Array.isArray(val)) disp = val.join(', ');
+    else if(typeof val==='object'){
+      // yesno_text / radio_text: {choice, text}
+      disp = (val.choice||'') + (val.text?` — ${val.text}`:'');
+    }
+    else disp = String(val);
+    if(!disp.trim()) return '';
+    return `<tr>
+      <td style="width:42%;color:var(--muted);vertical-align:top;padding:8px 11px;font-size:12px;">${ANK_LABELS[key]}</td>
+      <td style="font-weight:600;padding:8px 11px;font-size:13px;">${escHtmlAdmin(disp)}</td>
+    </tr>`;
+  }).filter(Boolean).join('');
+
+  $('ankAnswers').innerHTML = rows
+    ? `<div style="font-size:12px;color:var(--muted);margin-bottom:10px;">💾 Saqlangan: ${new Date(v.savedAt).toLocaleString('uz-UZ')} · 👶 ${v.babyName||'—'}</div>
+       <table style="width:100%;">${rows}</table>`
+    : '<div style="color:var(--muted);font-size:13px;padding:14px;">Bu versiyada javoblar bo\'sh</div>';
+}
+
+function escHtmlAdmin(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
 function goPage(p){
   document.querySelectorAll('.page').forEach(el=>el.classList.remove('active'));
   document.querySelectorAll('.sitem').forEach(el=>el.classList.remove('active'));
@@ -931,6 +1139,7 @@ function goPage(p){
   if(p==='users')renderUsers();
   if(p==='logs')renderLogs();
   if(p==='bot')renderBotPage();
+  if(p==='anketa'){fillAnketaSelect();loadAnketas();}
   if(p==='message'){fillSelects();renderMsgHist();}
 }
 
