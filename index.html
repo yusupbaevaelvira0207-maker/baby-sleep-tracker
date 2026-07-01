@@ -110,6 +110,32 @@ body::before{content:'';position:fixed;top:0;left:0;right:0;height:220px;backgro
 
 input[type="time"]::-webkit-calendar-picker-indicator,
 input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(0.4) sepia(1) saturate(3) hue-rotate(330deg);}
+
+/* Anketa */
+.ank-section{background:var(--card);border-radius:16px;margin-bottom:11px;overflow:hidden;box-shadow:0 4px 18px rgba(255,140,105,0.09);border:1px solid var(--border);}
+.ank-head{padding:14px 16px;font-family:'Nunito',sans-serif;font-size:14px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:space-between;background:linear-gradient(135deg,var(--soft),transparent);}
+.ank-head .ank-arrow{transition:transform 0.2s;font-size:12px;color:var(--muted);}
+.ank-head.open .ank-arrow{transform:rotate(90deg);}
+.ank-body{padding:0 16px;max-height:0;overflow:hidden;transition:max-height 0.3s ease,padding 0.3s ease;}
+.ank-body.open{max-height:5000px;padding:4px 16px 16px;}
+.ank-q{margin-bottom:14px;}
+.ank-q-label{font-size:13px;font-weight:700;color:var(--text);margin-bottom:7px;line-height:1.45;}
+.ank-input{background:var(--surface);border:2px solid var(--border);border-radius:11px;padding:10px 13px;font-family:'Quicksand',sans-serif;font-size:14px;color:var(--text);width:100%;}
+.ank-input:focus{outline:none;border-color:var(--accent);}
+.ank-textarea{background:var(--surface);border:2px solid var(--border);border-radius:11px;padding:10px 13px;font-family:'Quicksand',sans-serif;font-size:14px;color:var(--text);width:100%;height:70px;resize:vertical;}
+.ank-textarea:focus{outline:none;border-color:var(--accent);}
+.ank-opts{display:flex;flex-direction:column;gap:6px;}
+.ank-opt{display:flex;align-items:center;gap:9px;padding:9px 12px;border:2px solid var(--border);border-radius:11px;background:var(--surface);cursor:pointer;font-size:13px;font-weight:600;transition:all 0.15s;}
+.ank-opt:hover{border-color:var(--accent2);}
+.ank-opt.sel{border-color:var(--accent);background:var(--soft);color:var(--accent);}
+.ank-opt .ank-box{width:18px;height:18px;border-radius:5px;border:2px solid var(--muted);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:12px;}
+.ank-opt.sel .ank-box{border-color:var(--accent);background:var(--accent);color:white;}
+.ank-opt.radio .ank-box{border-radius:50%;}
+.ank-scale{display:flex;gap:5px;flex-wrap:wrap;}
+.ank-scale-btn{width:34px;height:34px;border-radius:9px;border:2px solid var(--border);background:var(--surface);font-family:'Nunito',sans-serif;font-weight:800;font-size:14px;color:var(--muted);cursor:pointer;transition:all 0.15s;}
+.ank-scale-btn.sel{border-color:var(--accent);background:var(--accent);color:white;}
+.ank-scale-ends{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);font-weight:600;margin-top:5px;}
+.ank-cond{margin-top:8px;}
 </style>
 </head>
 <body>
@@ -155,6 +181,7 @@ input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(0.4) sepia(1
   <div class="nav">
     <button class="nav-btn active" onclick="showPage('input')"><span>✍️</span>Kiritish</button>
     <button class="nav-btn" onclick="showPage('history')"><span>📋</span>Tarix</button>
+    <button class="nav-btn" onclick="showPage('anketa')"><span>📝</span>Anketa</button>
     <button class="nav-btn" onclick="showPage('babies')"><span>👶</span>Chaqaloq</button>
     <button class="nav-btn" onclick="showPage('profile')"><span>👩</span>Profil</button>
   </div>
@@ -277,6 +304,20 @@ input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(0.4) sepia(1
     </div>
   </div>
 
+  <!-- ANKETA -->
+  <div class="page" id="page-anketa">
+    <div class="card" style="background:linear-gradient(135deg,var(--soft),var(--soft2));">
+      <div class="card-title">📝 Uyqu tashxis anketasi</div>
+      <div style="font-size:13px;color:var(--muted);font-weight:600;line-height:1.6;">
+        Mutaxassis chaqaloqingizning uyqu muammosini aniqroq tushunishi uchun ushbu anketani to'ldiring.
+        Istalgan vaqtda tahrirlashingiz mumkin — har safar saqlaganda yangi versiya sifatida saqlanadi.
+      </div>
+      <div id="anketaVersionInfo" style="font-size:12px;color:var(--accent);font-weight:700;margin-top:9px;"></div>
+    </div>
+    <div id="anketaForm"></div>
+    <button class="btn-submit" id="anketaSaveBtn" onclick="saveAnketa()" style="margin-bottom:9px;">💾 Anketani saqlash</button>
+  </div>
+
 </div>
 </div>
 <div class="toast" id="toast"></div>
@@ -350,6 +391,7 @@ async function callScript(data) {
     await fetch(SCRIPT_URL, {
       method:  'POST',
       mode:    'no-cors',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body:    JSON.stringify(data),
     });
     return { ok: true };
@@ -924,18 +966,306 @@ function showPage(p){
   document.querySelectorAll('.page').forEach(el=>el.classList.remove('active'));
   document.querySelectorAll('.nav-btn').forEach(el=>el.classList.remove('active'));
   $('page-'+p).classList.add('active');
-  const idx=['input','history','babies','profile'].indexOf(p);
+  const idx=['input','history','anketa','babies','profile'].indexOf(p);
   if(idx>=0) document.querySelectorAll('.nav-btn')[idx].classList.add('active');
   if(p==='history') renderHistory();
   if(p==='babies')  renderBabies();
   if(p==='profile') renderProfile();
+  if(p==='anketa')  renderAnketa();
   if(p==='input')   { refreshBabyTabs(); autoFillSleepForm(); }
 }
+
+// ══════════════════════════════════════════════════════
+// ANKETA — Uyqu tashxis anketasi (schema asosida)
+// ══════════════════════════════════════════════════════
+// Turlar: text, textarea, yesno, yesno_text, radio, radio_text, checkbox, scale
+const ANKETA_SCHEMA = [
+  { title: '👶 Chaqaloqning uyqusi', qs: [
+    { k:'oila_tarkibi', t:'textarea', q:"Bolaning yashayotgan oila tarkibi (enaga bo'lsa ham yozing):" },
+    { k:'kim_uxlatadi', t:'textarea', q:"Ulardan qaysi biri bolani uxlatishda qatnashadi:" },
+    { k:'oila_rozi', t:'yesno', q:"Oilaning barcha a'zolari bolaning uyqusini yaxshilash istagingizga rozi?" },
+    { k:'oila_amal', t:'yesno', q:"Oila a'zolari bolaning uyqusini tashkil etish bo'yicha qarorlaringizga amal qiladilarmi?" },
+  ]},
+  { title: '🌱 Rivojlanish', qs: [
+    { k:'konikmalar', t:'checkbox', q:"Bola nimalarga qodir?", opts:['Qorniga aylana oladi','Orqasiga aylana oladi',"O'tirishi va o'tirolishi",'Emaklay oladi','Tik tura oladi va tayanchda turishi','Tik turgan holatdan yonboshlay oladi','Yura oladi','Gapiroladi (so\'zlarni ishlatadi)','Rozilik va noroziligini bildira oladi (ha/yo\'q)'] },
+    { k:'yangi_konikma', t:'text', q:"Bola yangi ko'nikmani qachondan beri o'zlashtirdi:" },
+    { k:'tish_chiqayapti', t:'text', q:"Tishlari chiqayaptimi:" },
+    { k:'tish_belgi', t:'textarea', q:"Sizningcha, hozir tishlari chiqayaptimi (milklari qizargan, hamma narsani og'ziga solyapti, ko'p so'lak)?" },
+    { k:'tish_kechiradi', t:'textarea', q:"Bola tish chiqishini odatda qanday boshdan kechiradi?" },
+    { k:'tish_tasir', t:'textarea', q:"Bu uning o'zini his etishiga va kayfiyatiga ta'sir qiladimi?" },
+  ]},
+  { title: '❤️ Salomatlik holati', qs: [
+    { k:'homiladorlik_asorat', t:'yesno', q:"Homiladorlik yoki tug'ruq paytida asoratlar bo'lganmi?" },
+    { k:'sogliq_tashxis', t:'yesno_text', q:"Bolada sog'liq xususiyatlari yoki tashxislar mavjudmi?" },
+    { k:'dori', t:'textarea', q:"Bola qandaydir dori-darmon qabul qilyaptimi? Ha bo'lsa, maqsadini ko'rsating:" },
+    { k:'oxirgi_emlash', t:'text', q:"Oxirgi emlash sanasi:" },
+    { k:'keyingi_emlash', t:'text', q:"Keyingi emlash sanasi:" },
+    { k:'kasallanish', t:'radio', q:"Bola qanchalik tez-tez kasallanadi?", opts:["Juda kamdan-kam, deyarli kasallanmaydi",'1-2 oyda bir marta','Tez-tez','Hozir kasal'] },
+    { k:'kasal_qanday', t:'text', q:"Agar hozir kasal bo'lsa — qanday namoyon bo'lmoqda:" },
+    { k:'ob_havo', t:'textarea', q:"Bola ob-havo o'zgarishlariga qanday munosabat bildiradi?" },
+    { k:'teri', t:'radio', q:"Bolaning terisi qanday?", opts:['Toza, silliq teri','Toshmalar, tirnalish yoki opruqlar bor'] },
+    { k:'qorin', t:'radio', q:"Bolaning qorni qanchalik tez-tez bezovta qiladi (koliklar, ich qotishi, gaz)?", opts:['Juda kamdan-kam',"Ko'pincha","Ko'p bezovta qiladi, lekin aniqlay olmayman"] },
+  ]},
+  { title: '🍼 Ovqatlanish', qs: [
+    { k:'allergiya', t:'yesno', q:"Bolada oziq-ovqat allergiyasi bormi?" },
+    { k:'emizgich', t:'yesno_text', q:"Emizgich (soska) ishlatadimi? Qanday hollarda:" },
+  ]},
+  { title: '🌙 Uyqu manzarasi', qs: [
+    { k:'muammo_qachon', t:'text', q:"Uyqu muammolari qachondan beri boshlandi:" },
+    { k:'muammo_tavsif', t:'textarea', q:"O'z so'zlaringiz bilan muammoning mohiyatini tasvirlab bering:" },
+  ]},
+  { title: '🛏️ Uyqu sharoitlari', qs: [
+    { k:'qayerda_uxlaydi', t:'checkbox', q:"Bola qayerda uxlaydi:", opts:["Ota-ona bilan bir ko'rpada",'Alohida uxlash joyida','Alohida xonada','Faqat qo\'llarda','Qisman birgalikda uyqu','Turgan aravachada','Harakatlanayotgan aravachada','Avtokresloda','Shezlongda','Boshqa'] },
+    { k:'joy_uygoq', t:'yesno_text', q:"Uyqu joyi uyg'oq paytda ham ishlatiladimi? (aravacha — yurish, karavot — manej)" },
+    { k:'kochirib', t:'yesno_text', q:"Bola bir joyda uxlab, keyin boshqa joyga ko'chirib qo'yiladimi?" },
+    { k:'joy_ozgartirish', t:'yesno_text', q:"Uxlash joyini o'zgartirish maqsadingiz bormi? (qanday va nima uchun)" },
+    { k:'harorat', t:'text', q:"Bolaning uxlaydigan xonasidagi harorat:" },
+    { k:'namlik', t:'text', q:"Bolaning uxlaydigan xonasidagi namlik:" },
+    { k:'aksessuarlar', t:'checkbox', q:"Qanday uyqu aksessuarlarini ishlatasiz:", opts:['Uyacha-matrasik','Oq shovqin','Uyqu o\'yinchog\'i','Tungi chiroq','Yostiq','Ko\'rpa','Bortiklar','Mobil','Kokos','Oddiy choyshab','Fermuarli choyshab','Uyqu xaltachasi','Boshqa'] },
+    { k:'kiyim', t:'text', q:"Bola qanday kiyimda uxlaydi:" },
+    { k:'taglik', t:'radio', q:"Ertalab bolaning taglik bezi to'liq bo'ladimi?", opts:['Yo\'q, tunda almashtiriladi','Yo\'q, tagliksiz uxlaydi','Ha'] },
+    { k:'quyosh_chiqish', t:'text', q:"Hozir sizning mintaqangizda quyosh qachon chiqadi:" },
+    { k:'quyosh_botish', t:'text', q:"Hozir sizning mintaqangizda quyosh qachon botadi:" },
+    { k:'blackout', t:'yesno', q:"«Blackout» (qorong'i) pardalardan foydalanasizmi?" },
+    { k:'shovqinlar', t:'checkbox', q:"Bola uxlayotganda uyda qanday shovqinlar bo'ladi:", opts:['Uy hayvonlari shovqini','Ota yoki ona xurrak tortadi','Kimdir oldin turadi/yuradi','Ko\'chadan shovqinlar','Mobil telefon jiringlashi','Boshqalar'] },
+  ]},
+  { title: '🌃 Tungi uyqu sifati', qs: [
+    { k:'tun_60daq', t:'textarea', q:"Tungi uyquga yotqizishdan 60 daqiqa oldin vaqtni qanday o'tkazasiz?" },
+    { k:'tun_marosim', t:'yesno_text', q:"Tungi uyqudan oldin marosiminiz (odatlar) bormi? Qanday?" },
+    { k:'tun_usul', t:'text', q:"Bolani tungi uyquga qanday usulda yotqizasiz:" },
+    { k:'tun_usul_ozg', t:'yesno_text', q:"Uxlash usulini o'zgartirmoqchimisiz? Qaysi usulga:" },
+    { k:'tun_muddat', t:'text', q:"Bola tungi uyquga qancha muddatda uxlab qoladi:" },
+    { k:'tun_tinch', t:'radio', q:"Bola tungi uyquga tinchgina uxlab qoladimi?", opts:['Ha','Yo\'q (qattiq yig\'laydi, isterika)','Har xil'] },
+    { k:'tun_uygonish', t:'text', q:"Bola tunda necha marta uyg'onadi:" },
+    { k:'tun_qayta', t:'text', q:"Tunda uyg'onganda bola qanday usulda uxlab qoladi:" },
+    { k:'tun_uygoq', t:'text', q:"Bola tunda uyg'oq qancha turadi:" },
+    { k:'tun_yarim', t:'radio_text', q:"Tunning birinchi va ikkinchi yarmida uyqu sifati farq qiladimi?", opts:['Yo\'q','Ha'] },
+  ]},
+  { title: '☀️ Kunduzi uyqu sifati', qs: [
+    { k:'kun_30daq', t:'textarea', q:"Kunduzi uxlatishdan 30 daqiqa oldin vaqtni qanday o'tkazasiz?" },
+    { k:'kun_marosim', t:'yesno_text', q:"Kunduzi uyqudan oldin marosiminiz bormi? Qanday?" },
+    { k:'kun_usul', t:'text', q:"Bolani kunduzi uyquga qanday usulda yotqizasiz:" },
+    { k:'kun_usul_ozg', t:'yesno_text', q:"Uxlash usulini o'zgartirmoqchimisiz? Qaysi usulga:" },
+    { k:'kun_vaqt', t:'text', q:"Bola kunduzi uxlatishga qancha vaqt ketadi?" },
+    { k:'kun_tinch', t:'radio', q:"Bola kunduzi tinchgina uxlab qoladimi?", opts:['Ha','Yo\'q (qattiq yig\'laydi, isterika)','Har xil'] },
+    { k:'kun_uzaytirish', t:'radio_text', q:"Kunduzi uyquni uzaytirish:", opts:['Gohida o\'zi uzoq uxlaydi (1 soatdan ko\'p)','Uzaytirmasalar qisqa, uzaytirilsa muvaffaqiyatli','Hech qanday usul muvaffaqiyatsiz'] },
+  ]},
+  { title: '😊 Uyg\'oq payt sifati', qs: [
+    { k:'uygonish_kayfiyat', t:'text', q:"Uyg'ongandan keyin bolaning kayfiyati qanday:" },
+    { k:'uygoq_oxiri', t:'textarea', q:"Uyg'oqlik vaqtining oxirida bolaning kayfiyati qanday?" },
+    { k:'uyqu_orasi', t:'textarea', q:"Uyqular orasida bola bilan vaqtni qanday o'tkazasiz?" },
+    { k:'chomiltirish', t:'text', q:"Bolani odatda qachon cho'miltirasiz:" },
+    { k:'chomiltirish_keyin', t:'radio', q:"Cho'miltirgandan keyin bola:", opts:['Maza qilib bo\'shashadi','Shod-xurram va faol bo\'ladi'] },
+  ]},
+  { title: '👩 Ona (siz haqingizda)', qs: [
+    { k:'ona_uxlash', t:'radio', q:"O'zingiz yaxshi uxlayapsizmi?", opts:['Yo\'q','Ba\'zan','Ha'] },
+    { k:'ona_soat', t:'text', q:"Sutkada necha soat uxlaysiz:" },
+    { k:'ona_uzun', t:'text', q:"Eng uzun uzluksiz uyqu vaqtingiz qancha:" },
+    { k:'ona_kunduz', t:'radio', q:"Kunduzi uxlaysizmi?", opts:['Yo\'q','Ba\'zan','Ha'] },
+    { k:'ona_hislar', t:'textarea', q:"Bolani uxlatayotganda his qiladigan uchta his-tuyg'uni sanab bering:" },
+    { k:'ona_fikrlar', t:'textarea', q:"Bolani uxlatayotganda boshingizda aylanadigan eng ko'p fikrlar:" },
+    { k:'ona_shkala', t:'scale', q:"10 ballik shkala bo'yicha onalikdan mamnuniyatingizni baholang:", low:'Charchagan', high:'Baxtli' },
+    { k:'ona_vaqt', t:'radio', q:"Kun davomida bola bilan qancha vaqt o'tkazasiz?", opts:['Deyarli kecha-yu kunduz','Kerak bo\'lganda qarindoshlarga qoldiraman','Muntazam uzoqlashaman (ish/o\'qish)'] },
+  ]},
+  { title: '🎯 Maqsadlar', qs: [
+    { k:'maqsad_min', t:'textarea', q:"Qanday minimal (eng asosiy) natijaga erishmoqchisiz?" },
+    { k:'maqsad_qilgan', t:'textarea', q:"Uyqu sifatini yaxshilash uchun nima qilgansiz va bu qanday natija berdi?" },
+  ]},
+  { title: '➕ Qo\'shimcha', qs: [
+    { k:'muhim_voqea', t:'radio_text', q:"So'nggi 1-2 oyda muhim voqealar bo'ldimi (ko'chish, sayohat, ajralish, yangi farzand)?", opts:['Yo\'q','Ha'] },
+    { k:'qoshimcha', t:'textarea', q:"Bolangiz uyqusini yaxshilash uchun foydali deb hisoblagan qo'shimcha ma'lumot:" },
+  ]},
+];
+
+let anketaData = {};   // joriy javoblar
+let anketaOpenSection = 0;
+
+function getAnketaLocal(){ return get('v4_anketa', {}); }
+function setAnketaLocal(d){ set('v4_anketa', d); }
+
+function renderAnketa(){
+  anketaData = getAnketaLocal();
+  const meta = anketaData._meta || {};
+  $('anketaVersionInfo').textContent = meta.version
+    ? `✅ Versiya ${meta.version} · oxirgi saqlangan: ${meta.savedAt ? new Date(meta.savedAt).toLocaleString('uz-UZ') : '-'}`
+    : '📝 Hali to\'ldirilmagan';
+
+  const form = $('anketaForm');
+  form.innerHTML = ANKETA_SCHEMA.map((sec, si) => {
+    const open = si === anketaOpenSection;
+    const body = sec.qs.map(q => renderAnketaQ(q)).join('');
+    return `<div class="ank-section">
+      <div class="ank-head ${open?'open':''}" onclick="toggleAnkSection(${si})">
+        <span>${sec.title}</span>
+        <span class="ank-arrow">▶</span>
+      </div>
+      <div class="ank-body ${open?'open':''}" id="ank-body-${si}">${body}</div>
+    </div>`;
+  }).join('');
+}
+
+function renderAnketaQ(q){
+  const val = anketaData[q.k];
+  let inner = '';
+
+  if(q.t === 'text'){
+    inner = `<input class="ank-input" data-k="${q.k}" value="${escAttr(val||'')}">`;
+  }
+  else if(q.t === 'textarea'){
+    inner = `<textarea class="ank-textarea" data-k="${q.k}">${escHtml(val||'')}</textarea>`;
+  }
+  else if(q.t === 'yesno'){
+    inner = renderOpts(q.k, ['Ha','Yo\'q'], val, 'radio');
+  }
+  else if(q.t === 'yesno_text'){
+    const sel = val && val.choice;
+    inner = renderOpts(q.k+'__c', ['Ha','Yo\'q'], sel, 'radio')
+      + `<div class="ank-cond"><input class="ank-input" data-k="${q.k}__t" placeholder="Izoh (ixtiyoriy)" value="${escAttr(val&&val.text||'')}"></div>`;
+  }
+  else if(q.t === 'radio'){
+    inner = renderOpts(q.k, q.opts, val, 'radio');
+  }
+  else if(q.t === 'radio_text'){
+    const sel = val && val.choice;
+    inner = renderOpts(q.k+'__c', q.opts, sel, 'radio')
+      + `<div class="ank-cond"><input class="ank-input" data-k="${q.k}__t" placeholder="Izoh (ixtiyoriy)" value="${escAttr(val&&val.text||'')}"></div>`;
+  }
+  else if(q.t === 'checkbox'){
+    const arr = Array.isArray(val) ? val : [];
+    inner = renderOpts(q.k, q.opts, arr, 'checkbox');
+  }
+  else if(q.t === 'scale'){
+    let btns = '';
+    for(let i=1;i<=10;i++){
+      btns += `<button type="button" class="ank-scale-btn ${val==i?'sel':''}" onclick="pickScale('${q.k}',${i},this)">${i}</button>`;
+    }
+    inner = `<div class="ank-scale">${btns}</div><div class="ank-scale-ends"><span>${q.low}</span><span>${q.high}</span></div>`;
+  }
+
+  return `<div class="ank-q"><div class="ank-q-label">${q.q}</div>${inner}</div>`;
+}
+
+function renderOpts(key, opts, val, mode){
+  return `<div class="ank-opts">` + opts.map(o=>{
+    let sel;
+    if(mode==='checkbox') sel = Array.isArray(val) && val.includes(o);
+    else sel = val === o;
+    const box = mode==='radio' ? 'radio' : '';
+    return `<div class="ank-opt ${box} ${sel?'sel':''}" onclick="pickOpt(this,'${escAttr(key)}','${escAttr(o)}','${mode}')">
+      <span class="ank-box">${sel?'✓':''}</span><span>${o}</span>
+    </div>`;
+  }).join('') + `</div>`;
+}
+
+function toggleAnkSection(si){
+  const head = document.querySelectorAll('.ank-head')[si];
+  const body = $('ank-body-'+si);
+  const isOpen = body.classList.contains('open');
+  // Avval joriy javoblarni saqlab qo'yamiz (DOM dan)
+  collectAnketaDom();
+  if(isOpen){ body.classList.remove('open'); head.classList.remove('open'); }
+  else { body.classList.add('open'); head.classList.add('open'); anketaOpenSection = si; }
+}
+
+function pickOpt(el, key, val, mode){
+  const container = el.parentElement;
+  if(mode==='radio'){
+    container.querySelectorAll('.ank-opt').forEach(o=>{o.classList.remove('sel');o.querySelector('.ank-box').textContent='';});
+    el.classList.add('sel'); el.querySelector('.ank-box').textContent='✓';
+  } else {
+    // checkbox
+    const on = el.classList.toggle('sel');
+    el.querySelector('.ank-box').textContent = on ? '✓' : '';
+  }
+}
+
+function pickScale(key, n, el){
+  el.parentElement.querySelectorAll('.ank-scale-btn').forEach(b=>b.classList.remove('sel'));
+  el.classList.add('sel');
+  anketaData[key] = n;
+}
+
+// DOM dagi barcha javoblarni anketaData ga yig'ish
+function collectAnketaDom(){
+  // text/textarea
+  document.querySelectorAll('#anketaForm [data-k]').forEach(inp=>{
+    anketaData[inp.getAttribute('data-k')] = inp.value;
+  });
+  // radio/checkbox/scale — schema bo'yicha o'qiymiz
+  ANKETA_SCHEMA.forEach(sec=>sec.qs.forEach(q=>{
+    const optsContainer = findOptsFor(q.k) || findOptsFor(q.k+'__c');
+    if(q.t==='yesno' || q.t==='radio'){
+      const sel = getSelectedOpt(q.k);
+      if(sel!==null) anketaData[q.k]=sel;
+    }
+    else if(q.t==='checkbox'){
+      const sels = getSelectedChecks(q.k);
+      if(sels) anketaData[q.k]=sels;
+    }
+    else if(q.t==='yesno_text' || q.t==='radio_text'){
+      const choice = getSelectedOpt(q.k+'__c');
+      const textInp = document.querySelector(`#anketaForm [data-k="${q.k}__t"]`);
+      anketaData[q.k] = { choice: choice||'', text: textInp?textInp.value:'' };
+      // vaqtincha maydonlarni tozalash
+      delete anketaData[q.k+'__t'];
+    }
+  }));
+}
+
+function findOptsFor(key){
+  const el = document.querySelector(`#anketaForm .ank-opt[onclick*="'${key}'"]`);
+  return el ? el.parentElement : null;
+}
+function getSelectedOpt(key){
+  const cont = findOptsFor(key);
+  if(!cont) return null;
+  const sel = cont.querySelector('.ank-opt.sel span:last-child');
+  return sel ? sel.textContent : null;
+}
+function getSelectedChecks(key){
+  const cont = findOptsFor(key);
+  if(!cont) return null;
+  return Array.from(cont.querySelectorAll('.ank-opt.sel span:last-child')).map(s=>s.textContent);
+}
+
+async function saveAnketa(){
+  collectAnketaDom();
+  const profile = getProfile() || {};
+  const prevVersion = (anketaData._meta && anketaData._meta.version) || 0;
+  anketaData._meta = {
+    version: prevVersion + 1,
+    savedAt: new Date().toISOString(),
+  };
+  setAnketaLocal(anketaData);
+
+  const btn = $('anketaSaveBtn');
+  btn.disabled = true; btn.textContent = '⏳ Saqlanmoqda...';
+
+  // Server ga yuborish (versiya sifatida)
+  await callScript({
+    action: 'saveAnketa',
+    chatId: profile.chatId || tgChatId || '',
+    username: profile.username || '',
+    mamaName: profile.name || '',
+    babyName: (getBabies()[0]||{}).name || '',
+    version: anketaData._meta.version,
+    answers: JSON.stringify(anketaData),
+  });
+
+  btn.disabled = false; btn.textContent = '💾 Anketani saqlash';
+  showToast(`✅ Anketa saqlandi! (versiya ${anketaData._meta.version})`);
+  $('anketaVersionInfo').textContent = `✅ Versiya ${anketaData._meta.version} · oxirgi saqlangan: ${new Date().toLocaleString('uz-UZ')}`;
+}
+
+// HTML/atribut xavfsizligi
+function escHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function escAttr(s){ return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
 function showToast(msg){
   const t=$('toast'); t.textContent=msg; t.classList.add('show');
   setTimeout(()=>t.classList.remove('show'),2800);
 }
+
 </script>
 </body>
 </html>
