@@ -117,7 +117,7 @@ input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(0.4) sepia(1
 .ank-head .ank-arrow{transition:transform 0.2s;font-size:12px;color:var(--muted);}
 .ank-head.open .ank-arrow{transform:rotate(90deg);}
 .ank-body{padding:0 16px;max-height:0;overflow:hidden;transition:max-height 0.3s ease,padding 0.3s ease;}
-.ank-body.open{max-height:5000px;padding:4px 16px 16px;}
+.ank-body.open{max-height:30000px;padding:4px 16px 16px;}
 .ank-q{margin-bottom:14px;}
 .ank-q-label{font-size:13px;font-weight:700;color:var(--text);margin-bottom:7px;line-height:1.45;}
 .ank-input{background:var(--surface);border:2px solid var(--border);border-radius:11px;padding:10px 13px;font-family:'Quicksand',sans-serif;font-size:14px;color:var(--text);width:100%;}
@@ -307,7 +307,7 @@ input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(0.4) sepia(1
   <!-- ANKETA -->
   <div class="page" id="page-anketa">
     <div class="card" style="background:linear-gradient(135deg,var(--soft),var(--soft2));">
-      <div class="card-title">📝 Uyqu tashxis anketasi</div>
+      <div class="card-title">📝 Uyqu tashxis anketasi <span style="font-size:10px;color:var(--muted);font-weight:600;">v3</span></div>
       <div style="font-size:13px;color:var(--muted);font-weight:600;line-height:1.6;">
         Mutaxassis chaqaloqingizning uyqu muammosini aniqroq tushunishi uchun ushbu anketani to'ldiring.
         Istalgan vaqtda tahrirlashingiz mumkin — har safar saqlaganda yangi versiya sifatida saqlanadi.
@@ -1095,13 +1095,15 @@ function renderAnketa(){
     const open = si === anketaOpenSection;
     const body = sec.qs.map(q => renderAnketaQ(q)).join('');
     return `<div class="ank-section">
-      <div class="ank-head ${open?'open':''}" onclick="toggleAnkSection(${si})">
+      <div class="ank-head ${open?'open':''}" data-sec="${si}">
         <span>${sec.title}</span>
         <span class="ank-arrow">▶</span>
       </div>
       <div class="ank-body ${open?'open':''}" id="ank-body-${si}">${body}</div>
     </div>`;
   }).join('');
+
+  bindAnketaEvents();
 }
 
 function renderAnketaQ(q){
@@ -1137,7 +1139,7 @@ function renderAnketaQ(q){
   else if(q.t === 'scale'){
     let btns = '';
     for(let i=1;i<=10;i++){
-      btns += `<button type="button" class="ank-scale-btn ${val==i?'sel':''}" onclick="pickScale('${q.k}',${i},this)">${i}</button>`;
+      btns += `<button type="button" class="ank-scale-btn ${val==i?'sel':''}" data-scale-key="${escAttr(q.k)}" data-scale-val="${i}">${i}</button>`;
     }
     inner = `<div class="ank-scale">${btns}</div><div class="ank-scale-ends"><span>${q.low}</span><span>${q.high}</span></div>`;
   }
@@ -1146,12 +1148,12 @@ function renderAnketaQ(q){
 }
 
 function renderOpts(key, opts, val, mode){
-  return `<div class="ank-opts" data-key="${escAttr(key)}">` + opts.map(o=>{
+  return `<div class="ank-opts" data-key="${escAttr(key)}" data-mode="${mode}">` + opts.map(o=>{
     let sel;
     if(mode==='checkbox') sel = Array.isArray(val) && val.includes(o);
     else sel = val === o;
     const box = mode==='radio' ? 'radio' : '';
-    return `<div class="ank-opt ${box} ${sel?'sel':''}" onclick="pickOpt(this,'${mode}')">
+    return `<div class="ank-opt ${box} ${sel?'sel':''}">
       <span class="ank-box">${sel?'✓':''}</span><span>${escHtml(o)}</span>
     </div>`;
   }).join('') + `</div>`;
@@ -1167,6 +1169,36 @@ function toggleAnkSection(si){
   else { body.classList.add('open'); head.classList.add('open'); anketaOpenSection = si; }
 }
 
+// Bitta umumiy click listener — inline onclick o'rniga (apostrof va h.k. bilan 100% xavfsiz)
+let anketaEventsBound = false;
+function bindAnketaEvents(){
+  if(anketaEventsBound) return;
+  anketaEventsBound = true;
+  $('anketaForm').addEventListener('click', function(e){
+    // 1) Variant tanlash (radio/checkbox)
+    const opt = e.target.closest('.ank-opt');
+    if(opt){
+      const mode = opt.parentElement.getAttribute('data-mode') || 'radio';
+      pickOpt(opt, mode);
+      return;
+    }
+    // 2) Shkala tugmasi (1-10)
+    const sc = e.target.closest('.ank-scale-btn');
+    if(sc){
+      sc.parentElement.querySelectorAll('.ank-scale-btn').forEach(b=>b.classList.remove('sel'));
+      sc.classList.add('sel');
+      anketaData[sc.getAttribute('data-scale-key')] = parseInt(sc.getAttribute('data-scale-val'));
+      return;
+    }
+    // 3) Bo'lim sarlavhasi (ochish/yopish)
+    const head = e.target.closest('.ank-head');
+    if(head){
+      toggleAnkSection(parseInt(head.getAttribute('data-sec')));
+      return;
+    }
+  });
+}
+
 function pickOpt(el, mode){
   const container = el.parentElement;
   if(mode==='radio'){
@@ -1179,11 +1211,7 @@ function pickOpt(el, mode){
   }
 }
 
-function pickScale(key, n, el){
-  el.parentElement.querySelectorAll('.ank-scale-btn').forEach(b=>b.classList.remove('sel'));
-  el.classList.add('sel');
-  anketaData[key] = n;
-}
+
 
 // DOM dagi barcha javoblarni anketaData ga yig'ish
 function collectAnketaDom(){
