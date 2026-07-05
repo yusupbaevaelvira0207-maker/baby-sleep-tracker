@@ -327,7 +327,7 @@ input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(0.4) sepia(1
 // ⚙️ FAQAT SHU QATORNI O'ZGARTIRING
 // Google Apps Script deploy qilgandan keyin URL ni kiriting
 // ══════════════════════════════════════════════════════
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwwxPOH0InJGWWy3d41KJFIn3SVzuNpa1rlI--tut9WS4A12g5ito-bFfeIB-JCBwrk/exec';
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz-X-3BSnpat7yut1QJiBqvvp7SOkTdYufxJJwDrAtFTgvH-rLo7SBntF7AtRnenFnt/exec';
 // Masalan: 'https://script.google.com/macros/s/XXXXXXXX/exec'
 // ══════════════════════════════════════════════════════
 
@@ -1146,13 +1146,13 @@ function renderAnketaQ(q){
 }
 
 function renderOpts(key, opts, val, mode){
-  return `<div class="ank-opts">` + opts.map(o=>{
+  return `<div class="ank-opts" data-key="${escAttr(key)}">` + opts.map(o=>{
     let sel;
     if(mode==='checkbox') sel = Array.isArray(val) && val.includes(o);
     else sel = val === o;
     const box = mode==='radio' ? 'radio' : '';
-    return `<div class="ank-opt ${box} ${sel?'sel':''}" onclick="pickOpt(this,'${escAttr(key)}','${escAttr(o)}','${mode}')">
-      <span class="ank-box">${sel?'✓':''}</span><span>${o}</span>
+    return `<div class="ank-opt ${box} ${sel?'sel':''}" onclick="pickOpt(this,'${mode}')">
+      <span class="ank-box">${sel?'✓':''}</span><span>${escHtml(o)}</span>
     </div>`;
   }).join('') + `</div>`;
 }
@@ -1167,7 +1167,7 @@ function toggleAnkSection(si){
   else { body.classList.add('open'); head.classList.add('open'); anketaOpenSection = si; }
 }
 
-function pickOpt(el, key, val, mode){
+function pickOpt(el, mode){
   const container = el.parentElement;
   if(mode==='radio'){
     container.querySelectorAll('.ank-opt').forEach(o=>{o.classList.remove('sel');o.querySelector('.ank-box').textContent='';});
@@ -1213,8 +1213,7 @@ function collectAnketaDom(){
 }
 
 function findOptsFor(key){
-  const el = document.querySelector(`#anketaForm .ank-opt[onclick*="'${key}'"]`);
-  return el ? el.parentElement : null;
+  return document.querySelector(`#anketaForm .ank-opts[data-key="${key}"]`);
 }
 function getSelectedOpt(key){
   const cont = findOptsFor(key);
